@@ -12,7 +12,15 @@ import { Card } from '@/components/ui/card';
 import { Chip, EmptyState, SectionHeader } from '@/components/ui/misc';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
-import { ALGO_PATTERN_MAP, ALGO_PATTERNS, ALGO_TOPIC_MAP, SOLVE_LANGUAGE_IDS, type AlgoPattern } from '@/content';
+import {
+  ALGO_PATTERN_MAP,
+  ALGO_PATTERNS,
+  ALGO_QUIZ,
+  ALGO_TOPIC_MAP,
+  QUESTION_MAP,
+  SOLVE_LANGUAGE_IDS,
+  type AlgoPattern,
+} from '@/content';
 import { AdSlot } from '@/features/ads';
 import { useProgress } from '@/features/progress/store';
 import { formatValue } from '@/lib/format';
@@ -53,6 +61,9 @@ function PatternContent({ pattern }: { pattern: AlgoPattern }) {
   const point = impl.keyPoints[pointIndex];
   const pointLines = point?.lines[language] ?? [];
   const marks = Object.fromEntries(pointLines.map((n) => [n, 'selected' as LineMark]));
+  // 관련 퀴즈가 지정되지 않았으면 토픽의 개념 퀴즈로 연결한다
+  const quizIds = (pattern.quizIds ?? []).filter((qid) => QUESTION_MAP[qid]);
+  const topicQuizCount = ALGO_QUIZ[pattern.topicId]?.questions.length ?? 0;
 
   const selectImpl = (i: number) => {
     setImplIndex(i);
@@ -238,18 +249,21 @@ function PatternContent({ pattern }: { pattern: AlgoPattern }) {
         </>
       )}
 
-      {!!pattern.quizIds?.length && (
+      {(quizIds.length > 0 || topicQuizCount > 0) && (
         <Card
           onPress={() =>
-            router.push({
-              pathname: '/quiz',
-              params: { mode: 'ids', ids: pattern.quizIds!.join(','), title: `${pattern.title} 퀴즈` },
-            })
+            router.push(
+              quizIds.length
+                ? { pathname: '/quiz', params: { mode: 'ids', ids: quizIds.join(','), title: `${pattern.title} 퀴즈` } }
+                : { pathname: '/quiz', params: { mode: 'topic', id: pattern.topicId } },
+            )
           }
           style={styles.quiz}>
           <Ionicons name="flash" size={22} color={c.algo} />
           <View style={{ flex: 1 }}>
-            <Text variant="bodyStrong">관련 개념 퀴즈 {pattern.quizIds.length}문제</Text>
+            <Text variant="bodyStrong">
+              {quizIds.length ? `관련 개념 퀴즈 ${quizIds.length}문제` : `${topic?.title ?? ''} 개념 퀴즈 ${topicQuizCount}문제`}
+            </Text>
             <Text variant="caption" color="textTertiary">
               이해했는지 퀴즈로 확인해 보세요
             </Text>
