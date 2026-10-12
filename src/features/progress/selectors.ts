@@ -13,8 +13,9 @@ import {
   REVIEW_CONTENT,
   type FrameworkId,
 } from '@/content';
-import { dayKey, hashString, seededRandom, shuffle } from '@/lib/date';
+import { dayKey, hashString, seededRandom } from '@/lib/date';
 
+import { composeDailyQuiz, csQuestionIdsForFramework, isQuestionForFramework } from './daily-quiz';
 import { useProgress, type DailyPlanRecord, type ProgressState, type QuizRecord } from './store';
 
 export interface QuizSetStats {
@@ -111,28 +112,28 @@ export function trackProgress(s: TrackSummary) {
 
 export type DailyPlan = DailyPlanRecord;
 
-function pickPreferUnseen(ids: string[], seen: (id: string) => boolean, count: number, random: () => number): string[] {
-  const unseen = shuffle(
-    ids.filter((id) => !seen(id)),
-    random,
-  );
-  const rest = shuffle(
-    ids.filter((id) => seen(id)),
-    random,
-  );
-  return [...unseen, ...rest].slice(0, count);
+const answeredOn = (quiz: Record<string, QuizRecord>, id: string, key: string) =>
+  !!quiz[id] && dayKey(new Date(quiz[id].lastAt)) === key;
+
+/** 오늘의 퀴즈 — 하루 목표만큼, 관심 프레임워크에 맞는 언어 문제만. keep 은 그대로 남길 문제 (오늘 이미 푼 문제) */
+export function dailyQuestionIds(state: ProgressState, date: Date = new Date(), keep: string[] = []): string[] {
+  const fw: FrameworkId = state.profile.framework;
+  const inScope = (id: string) => isQuestionForFramework(id, fw);
+  return composeDailyQuiz({
+    goal: state.profile.dailyGoal,
+    wrong: wrongQuestionIds(state.quiz, inScope),
+    cs: csQuestionIdsForFramework(fw),
+    algo: ALL_ALGO_QUESTION_IDS,
+    seen: (id) => !!state.quiz[id],
+    random: seededRandom(hashString(`${dayKey(date)}:${state.profile.nickname}:quiz`)),
+    keep: keep.filter(inScope),
+  });
 }
 
 export function dailyPlan(state: ProgressState, date: Date = new Date()): DailyPlan {
   const key = dayKey(date);
   const random = seededRandom(hashString(`${key}:${state.profile.nickname}`));
-  const seenQuiz = (id: string) => !!state.quiz[id];
-
-  // 틀린 문제 2개 + 새 CS 4개 + 새 알고리즘 개념 2개
-  const wrong = wrongQuestionIds(state.quiz).slice(0, 2);
-  const cs = pickPreferUnseen(ALL_CS_QUESTION_IDS, seenQuiz, 4, random);
-  const algo = pickPreferUnseen(ALL_ALGO_QUESTION_IDS, seenQuiz, 2, random);
-  const questionIds = [...new Set([...wrong, ...cs, ...algo])].slice(0, 8);
+  const questionIds = dailyQuestionIds(state, date);
 
   const level = state.profile.goal === 'career' ? 2 : 1;
   const unsolved = ALL_PROBLEMS.filter((p) => !state.problems[p.id]?.solved);
@@ -157,30 +158,61 @@ export function dailyPlan(state: ProgressState, date: Date = new Date()): DailyP
     review = { kind: 'pattern', id: content.patterns[Math.floor(random() * content.patterns.length)].id };
   }
 
-  return { key, questionIds, problemId, cardId, review };
+  return { key, questionIds, goal: state.profile.dailyGoal, framework: fw, problemId, cardId, review };
 }
 
-/** 오늘의 추천을 하루 동안 고정해서 돌려준다 (필요하면 새로 만든다) */
+/** 오늘 날짜이고 추천한 문제 · 카드가 아직 있는 플랜 */
+function todayPlan(daily: DailyPlan | null, key: string): DailyPlan | null {
+  if (!daily || daily.key !== key) return null;
+  if (daily.problemId && !PROBLEM_MAP[daily.problemId]) return null;
+  if (daily.cardId && !CARD_MAP[daily.cardId]) return null;
+  return daily;
+}
+
+/** 퀴즈가 지금의 하루 목표 · 관심 프레임워크로 만든 것인지 */
+function quizUpToDate(plan: DailyPlan, profile: ProgressState['profile']): boolean {
+  return (
+    plan.goal === profile.dailyGoal &&
+    plan.framework === profile.framework &&
+    plan.questionIds.length > 0 &&
+    plan.questionIds.every((id) => QUESTION_MAP[id])
+  );
+}
+
+/**
+ * 오늘의 추천을 하루 동안 고정해서 돌려준다 (필요하면 새로 만든다).
+ * 하루 목표나 관심 프레임워크가 바뀌면 퀴즈만 다시 만들고, 오늘 이미 푼 문제는 남긴다.
+ */
 export function useDailyPlan(): DailyPlan {
   const daily = useProgress((s) => s.daily);
+  const profile = useProgress((s) => s.profile);
   const key = dayKey();
-  const valid =
-    daily &&
-    daily.key === key &&
-    daily.questionIds.length > 0 &&
-    daily.questionIds.every((id) => QUESTION_MAP[id]) &&
-    (!daily.problemId || PROBLEM_MAP[daily.problemId]) &&
-    (!daily.cardId || CARD_MAP[daily.cardId]);
-  if (valid) return daily;
-  const plan = dailyPlan(useProgress.getState());
+  const today = todayPlan(daily, key);
+  if (today && quizUpToDate(today, profile)) return today;
+
+  const state = useProgress.getState();
+  const plan: DailyPlan = today
+    ? {
+        ...today,
+        goal: profile.dailyGoal,
+        framework: profile.framework,
+        questionIds: dailyQuestionIds(state, new Date(), answeredToday(today, state.quiz, key)),
+      }
+    : dailyPlan(state);
   if (plan.questionIds.length > 0) {
     // 렌더 중 상태 갱신을 피하기 위해 다음 틱에 저장
     setTimeout(() => {
-      const cur = useProgress.getState().daily;
-      if (cur?.key !== key || cur.questionIds.length === 0) useProgress.getState().setDaily(plan);
+      const s = useProgress.getState();
+      const cur = todayPlan(s.daily, key);
+      if (!cur || !quizUpToDate(cur, s.profile)) s.setDaily(plan);
     }, 0);
   }
   return plan;
+}
+
+/** 오늘의 퀴즈 중 오늘 푼 문제 */
+export function answeredToday(plan: DailyPlan, quiz: Record<string, QuizRecord>, key: string = dayKey()): string[] {
+  return plan.questionIds.filter((id) => answeredOn(quiz, id, key));
 }
 
 /** 오늘의 코드 리뷰 추천 — 관심 프레임워크가 바뀌어도 바로 반영되도록 매번 계산한다 */

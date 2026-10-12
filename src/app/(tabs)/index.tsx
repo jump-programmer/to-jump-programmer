@@ -25,9 +25,16 @@ import {
 } from '@/content';
 import { AdSlot } from '@/features/ads';
 import { useReviewLanguageMap } from '@/features/progress/review-language';
-import { pickReview, trackProgress, trackSummary, useDailyPlan, wrongQuestionIds } from '@/features/progress/selectors';
+import {
+  answeredToday,
+  pickReview,
+  trackProgress,
+  trackSummary,
+  useDailyPlan,
+  wrongQuestionIds,
+} from '@/features/progress/selectors';
 import { useProgress, useTodayCount } from '@/features/progress/store';
-import { computeStreak, dayKey } from '@/lib/date';
+import { computeStreak } from '@/lib/date';
 import { useColors } from '@/theme/theme-provider';
 import { spacing } from '@/theme/tokens';
 
@@ -46,10 +53,12 @@ export default function Home() {
   const streak = computeStreak(state.activity);
   const goal = state.profile.dailyGoal;
   const plan = useDailyPlan();
-  const todayKey = dayKey();
-  const quizDoneToday =
-    plan.questionIds.length > 0 &&
-    plan.questionIds.every((id) => state.quiz[id] && dayKey(new Date(state.quiz[id].lastAt)) === todayKey);
+  const quizTotal = plan.questionIds.length;
+  const quizAnswered = answeredToday(plan, state.quiz);
+  const quizDoneToday = quizTotal > 0 && quizAnswered.length === quizTotal;
+  // 풀다 만 퀴즈는 남은 문제만 이어서 푼다
+  const quizIds =
+    quizAnswered.length > 0 && !quizDoneToday ? plan.questionIds.filter((id) => !quizAnswered.includes(id)) : plan.questionIds;
   const summary = useMemo(() => trackSummary(state), [state]);
   const progress = trackProgress(summary);
   const wrongCount = useMemo(() => wrongQuestionIds(state.quiz).length, [state.quiz]);
@@ -107,16 +116,18 @@ export default function Home() {
         </View>
         <Button
           title={
-            !plan.questionIds.length
+            !quizTotal
               ? '퀴즈 콘텐츠 준비 중'
               : quizDoneToday
                 ? '오늘의 퀴즈 완료 · 다시 풀기'
-                : `오늘의 퀴즈 ${plan.questionIds.length}문제 풀기`
+                : quizAnswered.length > 0
+                  ? `오늘의 퀴즈 이어 풀기 · ${quizAnswered.length}/${quizTotal}`
+                  : `오늘의 퀴즈 ${quizTotal}문제 풀기`
           }
           icon={quizDoneToday ? 'checkmark-circle' : 'flash'}
           variant={quizDoneToday ? 'secondary' : 'primary'}
-          disabled={!plan.questionIds.length}
-          onPress={() => router.push({ pathname: '/quiz', params: { mode: 'ids', ids: plan.questionIds.join(','), title: '오늘의 퀴즈' } })}
+          disabled={!quizTotal}
+          onPress={() => router.push({ pathname: '/quiz', params: { mode: 'ids', ids: quizIds.join(','), title: '오늘의 퀴즈' } })}
         />
       </Card>
 

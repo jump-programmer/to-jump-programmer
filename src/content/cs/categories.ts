@@ -1,4 +1,4 @@
-import type { CsCategory, CsGroupId } from '../types';
+import type { CsCategory, CsGroupId, FrameworkId } from '../types';
 
 export const CS_GROUPS: { id: CsGroupId; title: string; description: string }[] = [
   { id: 'fundamentals', title: 'CS 기초', description: '운영체제 · 네트워크 · 자료구조 · DB · 보안' },
@@ -119,3 +119,14 @@ export const CS_CATEGORIES: CsCategory[] = [
 export const CS_CATEGORY_MAP: Record<string, CsCategory> = Object.fromEntries(
   CS_CATEGORIES.map((c) => [c.id, c]),
 );
+
+/**
+ * 관심 프레임워크에서 쓰는 언어 카테고리 (group 'language').
+ * 오늘의 퀴즈는 언어 카테고리 중 여기 있는 것만 내고, 운영체제 · 네트워크 같은 다른 카테고리는 모두 낸다.
+ * Kotlin 카테고리는 아직 없어 Spring 은 Java 만 나온다 — 카테고리를 추가하면 spring 에 'kotlin' 을 넣는다.
+ */
+export const FRAMEWORK_LANGUAGE_CATEGORIES: Record<FrameworkId, string[]> = {
+  spring: ['java'],
+  nest: ['javascript'],
+  django: ['python'],
+};

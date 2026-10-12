@@ -56,7 +56,7 @@ import type {
 
 export * from './types';
 export { ALGO_TOPICS, ALGO_TOPIC_MAP, EXTRA_PROBLEM_TAGS, topicLabel } from './algorithm/topics';
-export { CS_CATEGORIES, CS_CATEGORY_MAP, CS_GROUPS } from './cs/categories';
+export { CS_CATEGORIES, CS_CATEGORY_MAP, CS_GROUPS, FRAMEWORK_LANGUAGE_CATEGORIES } from './cs/categories';
 export {
   REVIEW_CATEGORY_LABEL,
   REVIEW_FRAMEWORK_MAP,
