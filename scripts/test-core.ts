@@ -134,7 +134,7 @@ test('학습 기록 백업 만들기 · 읽기', () => {
   assert.deepEqual(parsed.backup.progress, progress);
   assert.equal(parsed.backup.drafts?.drafts['p1:kotlin'], 'class Solution {}');
   assert.equal(backupFileName(now), 'to-jump-backup-2026-10-10.json');
-  assert.match(describeBackup(parsed.backup), /학습한 날 2일 · 퀴즈 1문항 · 코딩 문제 1개/);
+  assert.match(describeBackup(parsed.backup), /학습한 날 2일 · 퀴즈 1문항 · 알고리즘 유형 1개/);
 });
 test('잘못된 백업 파일은 거절', () => {
   const ok = { app: 'to-jump-programmer', format: 1, exportedAt: '', progress: { profile: {}, settings: {} } };

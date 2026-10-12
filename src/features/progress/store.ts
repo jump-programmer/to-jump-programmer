@@ -69,6 +69,9 @@ export interface DailyPlanRecord {
   /** 퀴즈를 만들 때의 하루 목표 · 관심 프레임워크 — 바뀌면 오늘의 퀴즈를 다시 만든다 */
   goal?: number;
   framework?: FrameworkId;
+  /** 오늘 공부할 알고리즘 유형 */
+  algoPatternId?: string;
+  /** 이전 버전의 오늘의 코딩 문제 (더 이상 쓰지 않음) */
   problemId?: string;
   cardId?: string;
   review?: { kind: 'pattern' | 'challenge'; id: string };

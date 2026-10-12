@@ -1,14 +1,15 @@
 import {
+  ALGO_PATTERN_MAP,
+  ALGO_PATTERNS,
   ALGO_QUIZ,
   ALGO_TOPICS,
+  ALL_ALGO_PATTERNS,
   ALL_CARD_IDS,
-  ALL_PROBLEMS,
   CARD_MAP,
   CHALLENGE_MAP,
   CS_CATEGORIES,
   CS_CONTENT,
   PATTERN_MAP,
-  PROBLEM_MAP,
   QUESTION_MAP,
   REVIEW_CONTENT,
   type FrameworkId,
@@ -50,6 +51,7 @@ export function quizSetStats(ids: string[], quiz: Record<string, QuizRecord>): Q
 export const algoTopicQuestionIds = (topicId: string) => (ALGO_QUIZ[topicId]?.questions ?? []).map((q) => q.id);
 export const csCategoryQuestionIds = (categoryId: string) => (CS_CONTENT[categoryId]?.quiz ?? []).map((q) => q.id);
 export const csCategoryCardIds = (categoryId: string) => (CS_CONTENT[categoryId]?.cards ?? []).map((c) => c.id);
+export const algoTopicPatternIds = (topicId: string) => (ALGO_PATTERNS[topicId] ?? []).map((p) => p.id);
 
 export const ALL_ALGO_QUESTION_IDS = ALGO_TOPICS.flatMap((t) => algoTopicQuestionIds(t.id));
 export const ALL_CS_QUESTION_IDS = CS_CATEGORIES.flatMap((c) => csCategoryQuestionIds(c.id));
@@ -70,7 +72,7 @@ export function againCardIds(state: Pick<ProgressState, 'cards'>): string[] {
 }
 
 export interface TrackSummary {
-  algo: { quiz: QuizSetStats; solved: number; problems: number };
+  algo: { quiz: QuizSetStats; patternsRead: number; patterns: number };
   review: { patternsRead: number; patterns: number; challengesDone: number; challenges: number };
   cs: { quiz: QuizSetStats; cardsReviewed: number; cards: number };
 }
@@ -79,8 +81,8 @@ export function trackSummary(state: ProgressState): TrackSummary {
   return {
     algo: {
       quiz: quizSetStats(ALL_ALGO_QUESTION_IDS, state.quiz),
-      solved: ALL_PROBLEMS.filter((p) => state.problems[p.id]?.solved).length,
-      problems: ALL_PROBLEMS.length,
+      patternsRead: ALL_ALGO_PATTERNS.filter((p) => state.algoPatterns[p.id]).length,
+      patterns: ALL_ALGO_PATTERNS.length,
     },
     review: {
       patternsRead: Object.keys(state.patterns).filter((id) => PATTERN_MAP[id]).length,
@@ -100,7 +102,7 @@ export function trackSummary(state: ProgressState): TrackSummary {
 export function trackProgress(s: TrackSummary) {
   const ratio = (a: number, b: number) => (b ? a / b : 0);
   return {
-    algo: (s.algo.quiz.progress + ratio(s.algo.solved, s.algo.problems)) / 2,
+    algo: (s.algo.quiz.progress + ratio(s.algo.patternsRead, s.algo.patterns)) / 2,
     review: (ratio(s.review.patternsRead, s.review.patterns) + ratio(s.review.challengesDone, s.review.challenges)) / 2,
     cs: (s.cs.quiz.progress + ratio(s.cs.cardsReviewed, s.cs.cards)) / 2,
   };
@@ -135,11 +137,7 @@ export function dailyPlan(state: ProgressState, date: Date = new Date()): DailyP
   const random = seededRandom(hashString(`${key}:${state.profile.nickname}`));
   const questionIds = dailyQuestionIds(state, date);
 
-  const level = state.profile.goal === 'career' ? 2 : 1;
-  const unsolved = ALL_PROBLEMS.filter((p) => !state.problems[p.id]?.solved);
-  const pool = unsolved.filter((p) => p.level >= level && p.level <= level + 1);
-  const problemPool = pool.length ? pool : unsolved.length ? unsolved : ALL_PROBLEMS;
-  const problemId = problemPool.length ? problemPool[Math.floor(random() * problemPool.length)].id : undefined;
+  const algoPatternId = pickAlgoPattern(state, date);
 
   const cardPool = ALL_CARD_IDS.filter((id) => !state.cards[id]);
   const cards = cardPool.length ? cardPool : ALL_CARD_IDS;
@@ -158,16 +156,29 @@ export function dailyPlan(state: ProgressState, date: Date = new Date()): DailyP
     review = { kind: 'pattern', id: content.patterns[Math.floor(random() * content.patterns.length)].id };
   }
 
-  return { key, questionIds, goal: state.profile.dailyGoal, framework: fw, problemId, cardId, review };
+  return { key, questionIds, goal: state.profile.dailyGoal, framework: fw, algoPatternId, cardId, review };
 }
 
-/** 오늘 날짜이고 추천한 문제 · 카드가 아직 있는 플랜 */
+/** 오늘 공부할 알고리즘 유형 — 아직 안 본 유형 중 목표(신입: 기초~중급, 경력: 중급~심화)에 맞는 것 */
+export function pickAlgoPattern(state: ProgressState, date: Date = new Date()): string | undefined {
+  const random = seededRandom(hashString(`${dayKey(date)}:${state.profile.nickname}:pattern`));
+  const level = state.profile.goal === 'career' ? 2 : 1;
+  const unread = ALL_ALGO_PATTERNS.filter((p) => !state.algoPatterns[p.id]);
+  const fit = unread.filter((p) => p.difficulty >= level && p.difficulty <= level + 1);
+  const pool = fit.length ? fit : unread.length ? unread : ALL_ALGO_PATTERNS;
+  return pool.length ? pool[Math.floor(random() * pool.length)].id : undefined;
+}
+
+/** 오늘 날짜이고 추천한 유형 · 카드가 아직 있는 플랜 */
 function todayPlan(daily: DailyPlan | null, key: string): DailyPlan | null {
   if (!daily || daily.key !== key) return null;
-  if (daily.problemId && !PROBLEM_MAP[daily.problemId]) return null;
+  if (daily.algoPatternId && !ALGO_PATTERN_MAP[daily.algoPatternId]) return null;
   if (daily.cardId && !CARD_MAP[daily.cardId]) return null;
   return daily;
 }
+
+/** 알고리즘 유형 추천이 없는 플랜 (유형 학습 도입 전에 만든 오늘의 플랜) */
+const missingPattern = (plan: DailyPlan) => !plan.algoPatternId && ALL_ALGO_PATTERNS.length > 0;
 
 /** 퀴즈가 지금의 하루 목표 · 관심 프레임워크로 만든 것인지 */
 function quizUpToDate(plan: DailyPlan, profile: ProgressState['profile']): boolean {
@@ -182,13 +193,14 @@ function quizUpToDate(plan: DailyPlan, profile: ProgressState['profile']): boole
 /**
  * 오늘의 추천을 하루 동안 고정해서 돌려준다 (필요하면 새로 만든다).
  * 하루 목표나 관심 프레임워크가 바뀌면 퀴즈만 다시 만들고, 오늘 이미 푼 문제는 남긴다.
+ * 유형 학습 도입 전에 만든 오늘의 플랜에는 알고리즘 유형 추천만 채운다.
  */
 export function useDailyPlan(): DailyPlan {
   const daily = useProgress((s) => s.daily);
   const profile = useProgress((s) => s.profile);
   const key = dayKey();
   const today = todayPlan(daily, key);
-  if (today && quizUpToDate(today, profile)) return today;
+  if (today && quizUpToDate(today, profile) && !missingPattern(today)) return today;
 
   const state = useProgress.getState();
   const plan: DailyPlan = today
@@ -196,7 +208,10 @@ export function useDailyPlan(): DailyPlan {
         ...today,
         goal: profile.dailyGoal,
         framework: profile.framework,
-        questionIds: dailyQuestionIds(state, new Date(), answeredToday(today, state.quiz, key)),
+        questionIds: quizUpToDate(today, profile)
+          ? today.questionIds
+          : dailyQuestionIds(state, new Date(), answeredToday(today, state.quiz, key)),
+        algoPatternId: today.algoPatternId ?? pickAlgoPattern(state),
       }
     : dailyPlan(state);
   if (plan.questionIds.length > 0) {
@@ -204,7 +219,7 @@ export function useDailyPlan(): DailyPlan {
     setTimeout(() => {
       const s = useProgress.getState();
       const cur = todayPlan(s.daily, key);
-      if (!cur || !quizUpToDate(cur, s.profile)) s.setDaily(plan);
+      if (!cur || !quizUpToDate(cur, s.profile) || missingPattern(cur)) s.setDaily(plan);
     }, 0);
   }
   return plan;

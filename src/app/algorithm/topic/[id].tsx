@@ -3,16 +3,15 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AlgoPatternRow } from '@/components/algo-pattern-row';
-import { ProblemRow } from '@/components/problem-row';
 import { RichText } from '@/components/rich-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Divider, EmptyState, IconBadge, SectionHeader } from '@/components/ui/misc';
+import { Divider, EmptyState, IconBadge } from '@/components/ui/misc';
 import { ProgressBar } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { SegmentedControl } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
-import { ALGO_PATTERNS, ALGO_QUIZ, ALGO_TOPIC_MAP, ALL_PROBLEMS } from '@/content';
+import { ALGO_PATTERNS, ALGO_QUIZ, ALGO_TOPIC_MAP } from '@/content';
 import { AdSlot } from '@/features/ads';
 import { algoTopicQuestionIds, quizSetStats, wrongQuestionIds } from '@/features/progress/selectors';
 import { useProgress } from '@/features/progress/store';
@@ -44,7 +43,6 @@ export default function TopicScreen() {
   const ids = algoTopicQuestionIds(id);
   const stats = quizSetStats(ids, quiz);
   const wrong = wrongQuestionIds(quiz, (qid) => ids.includes(qid));
-  const related = ALL_PROBLEMS.filter((p) => p.topics.includes(id));
   const showPatterns = patterns.length > 0 && tab === 'patterns';
 
   return (
@@ -149,19 +147,6 @@ export default function TopicScreen() {
         </>
       )}
 
-      {related.length > 0 && (
-        <>
-          <SectionHeader title="이 개념으로 풀어볼 문제" subtitle={`${related.length}문제`} />
-          <Card padded={false}>
-            {related.map((p, i) => (
-              <View key={p.id}>
-                {i > 0 && <Divider inset={spacing.lg} />}
-                <ProblemRow problem={p} />
-              </View>
-            ))}
-          </Card>
-        </>
-      )}
       <AdSlot />
     </Screen>
   );

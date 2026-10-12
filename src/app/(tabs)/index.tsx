@@ -13,15 +13,15 @@ import { ProgressBar, ProgressRing } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import {
+  ALGO_PATTERN_MAP,
+  ALGO_TOPIC_MAP,
   CARD_MAP,
   CHALLENGE_MAP,
   CS_CATEGORY_MAP,
   PATTERN_MAP,
-  PROBLEM_MAP,
   resolveChallenge,
   resolvePattern,
   REVIEW_FRAMEWORK_MAP,
-  topicLabel,
 } from '@/content';
 import { AdSlot } from '@/features/ads';
 import { useReviewLanguageMap } from '@/features/progress/review-language';
@@ -63,7 +63,7 @@ export default function Home() {
   const progress = trackProgress(summary);
   const wrongCount = useMemo(() => wrongQuestionIds(state.quiz).length, [state.quiz]);
 
-  const problem = plan.problemId ? PROBLEM_MAP[plan.problemId] : undefined;
+  const algoPattern = plan.algoPatternId ? ALGO_PATTERN_MAP[plan.algoPatternId] : undefined;
   const card = plan.cardId ? CARD_MAP[plan.cardId] : undefined;
   const review = pickReview(state);
   const reviewLanguage = useReviewLanguageMap();
@@ -149,21 +149,20 @@ export default function Home() {
 
       <SectionHeader title="오늘의 추천" subtitle="매일 새로운 조합으로 추천해드려요" />
       <View style={{ gap: spacing.md }}>
-        {problem && (
-          <Card onPress={() => router.push(`/algorithm/problem/${problem.id}`)} style={styles.recCard}>
+        {algoPattern && (
+          <Card onPress={() => router.push(`/algorithm/pattern/${algoPattern.id}`)} style={styles.recCard}>
             <IconBadge name="code-slash" color={c.algo} background={c.algoSoft} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text variant="small" tint={c.algo} weight="700">
-                오늘의 코딩 문제
+                오늘의 알고리즘 유형 · {ALGO_TOPIC_MAP[algoPattern.topicId]?.title}
               </Text>
               <Text variant="bodyStrong" numberOfLines={1}>
-                {problem.title}
+                {algoPattern.title}
               </Text>
               <View style={styles.badges}>
-                <DifficultyBadge level={problem.level} prefix="Lv" />
-                {problem.topics.slice(0, 2).map((t) => (
-                  <Badge key={t} label={topicLabel(t)} />
-                ))}
+                <DifficultyBadge level={algoPattern.difficulty} />
+                <Badge label={`구현 예제 ${algoPattern.implementations.length}가지`} />
+                {state.algoPatterns[algoPattern.id] && <Badge label="학습 완료" tone="success" icon="checkmark" />}
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={c.textTertiary} />
@@ -212,7 +211,7 @@ export default function Home() {
           color={c.algo}
           soft={c.algoSoft}
           value={progress.algo}
-          detail={`개념 퀴즈 ${summary.algo.quiz.attempted}/${summary.algo.quiz.total} · 해결 ${summary.algo.solved}/${summary.algo.problems}`}
+          detail={`유형 ${summary.algo.patternsRead}/${summary.algo.patterns} · 개념 퀴즈 ${summary.algo.quiz.attempted}/${summary.algo.quiz.total}`}
           onPress={() => router.push('/algorithm')}
         />
         <TrackCard

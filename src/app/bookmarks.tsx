@@ -12,7 +12,6 @@ import {
   CARD_MAP,
   CHALLENGE_MAP,
   PATTERN_MAP,
-  PROBLEM_MAP,
   QUESTION_MAP,
   resolveChallenge,
   resolvePattern,
@@ -31,11 +30,10 @@ export default function BookmarksScreen() {
   const questions = entries.filter(([id]) => QUESTION_MAP[id]).map(([id]) => id);
   const cards = entries.filter(([id]) => CARD_MAP[id]).map(([id]) => id);
   const algoPatterns = entries.filter(([id]) => ALGO_PATTERN_MAP[id]).map(([id]) => id);
-  const problems = entries.filter(([id]) => PROBLEM_MAP[id]).map(([id]) => id);
   const patterns = entries.filter(([id]) => PATTERN_MAP[id]).map(([id]) => id);
   const challenges = entries.filter(([id]) => CHALLENGE_MAP[id]).map(([id]) => id);
   const empty =
-    !questions.length && !cards.length && !algoPatterns.length && !problems.length && !patterns.length && !challenges.length;
+    !questions.length && !cards.length && !algoPatterns.length && !patterns.length && !challenges.length;
 
   return (
     <Screen>
@@ -102,22 +100,6 @@ export default function BookmarksScreen() {
                 subtitle={ALGO_TOPIC_MAP[ALGO_PATTERN_MAP[id].topicId]?.title}
                 left={<IconBadge name="code-slash" color={c.algo} background={c.algoSoft} size={32} />}
                 onPress={() => router.push(`/algorithm/pattern/${id}`)}
-              />
-            </View>
-          ))}
-        </Section>
-      )}
-
-      {problems.length > 0 && (
-        <Section title="코딩 문제" count={problems.length}>
-          {problems.map((id, i) => (
-            <View key={id}>
-              {i > 0 && <Divider />}
-              <ListRow
-                title={PROBLEM_MAP[id].title}
-                subtitle={`Lv.${PROBLEM_MAP[id].level}`}
-                left={<IconBadge name="code-slash" color={c.algo} background={c.algoSoft} size={32} />}
-                onPress={() => router.push(`/algorithm/problem/${id}`)}
               />
             </View>
           ))}
