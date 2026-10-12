@@ -3,7 +3,7 @@
 코딩 테스트, 코드 리뷰 테스트, 기술 면접을 **한 앱에서** 준비하는 모바일 학습 앱입니다.
 하루 10분씩 퀴즈·문제·면접 카드로 꾸준히 학습하도록 설계했습니다.
 
-**[웹에서 바로 사용하기 →](https://jump-programmer.github.io/to-jump-programmer/)** 설치 · 로그인 없이 브라우저에서 바로 쓰고, 휴대폰에서는 홈 화면에 앱처럼 설치할 수 있습니다 (PWA).
+**[웹에서 바로 사용하기 → jumpprogrammer.app](https://jumpprogrammer.app)** 설치 · 로그인 없이 브라우저에서 바로 쓰고, 휴대폰에서는 홈 화면에 앱처럼 설치할 수 있습니다 (PWA).
 
 | 기기 | 설치 방법 |
 | --- | --- |
@@ -43,7 +43,7 @@
 | 영역 | 선택 | 이유 |
 | --- | --- | --- |
 | 앱 | **Expo SDK 57 (React Native 0.86) + TypeScript** | iOS · Android · 웹을 하나의 코드로. EAS 클라우드 빌드로 스토어 출시 |
-| 웹 (PWA) | Expo 웹 내보내기 + Workbox 서비스 워커 + **GitHub Pages** | 브라우저 · 홈 화면 설치 · 오프라인 지원. `main` 에 푸시하면 GitHub Actions 가 배포 |
+| 웹 (PWA) | Expo 웹 내보내기 + Workbox 서비스 워커 + **Cloudflare Workers**(정적 자산) | 브라우저 · 홈 화면 설치 · 오프라인 지원. `main` 에 푸시하면 GitHub Actions 가 배포 |
 | 라우팅 | Expo Router (파일 기반) | 탭 + 스택 네비게이션, 딥링크 기본 지원 |
 | 상태·저장 | Zustand + AsyncStorage | 학습 기록을 **기기에만 저장** → 서버·DB 없이 동작, 운영자가 수집하는 개인정보 없음 |
 | 콘텐츠 | 앱 번들에 포함된 TypeScript 데이터 | CMS·API 서버 불필요. 콘텐츠 수정은 EAS Update(OTA)로 배포 |
@@ -120,8 +120,8 @@ npm run web        # 브라우저에서 실행 (개발 서버)
 | `npm run typecheck` | 앱 · 스크립트 · 에디터 타입 검사 |
 | `npm run lint` | ESLint (React Compiler 규칙 포함) |
 | `npm test` | 핵심 로직 테스트 (마크다운 파서 · diff · 채점 비교 · 출력 파서 · 연속 학습일 · 백업 파일) |
-| `npm run build:web` | 웹(PWA) 빌드 — `dist/` (서비스 워커 · manifest · sitemap 포함) |
-| `npm run preview:web` | 웹 빌드를 GitHub Pages 와 같은 방식으로 띄워 확인 |
+| `npm run build:web` | 웹(PWA) 빌드 — `dist/` (서비스 워커 · manifest · sitemap · robots.txt · ads.txt 포함) |
+| `npm run preview:web` | 웹 빌드를 로컬 정적 서버로 띄워 확인 |
 | `npm run test:harness` | Java · Kotlin · C++ 채점 하네스 테스트 (JDK, kotlinc, g++/clang++ 필요) |
 | `npm run validate` | 콘텐츠 구조 검증 + 코딩 문제 모범 답안 5개 언어 실행 검증 (python3, node, JDK 15+, kotlinc, g++/clang++ 필요) |
 
@@ -156,7 +156,7 @@ src/
 editor/src/main.ts          # 내장 코드 에디터 소스 (esbuild 로 번들)
 scripts/                    # 콘텐츠 동기화·검증 · 에디터 번들 · 아이콘 생성 · 웹(PWA) 빌드
 public/icons/               # 웹 앱 설치 아이콘
-.github/workflows/          # 웹 버전 GitHub Pages 배포
+.github/workflows/          # 웹 버전 Cloudflare 배포 (wrangler.jsonc)
 infra/runner/               # Java·Kotlin·C++ 실행 서버 (Piston + Caddy HTTPS) docker-compose
 plugins/                    # 로컬 Expo config plugin (iOS UIScene 생명주기)
 docs/                       # 콘텐츠 작성 가이드 · 웹 배포 가이드 · 개인정보 처리방침 · 스크린샷
