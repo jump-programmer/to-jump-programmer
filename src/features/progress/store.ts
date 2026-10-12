@@ -66,6 +66,9 @@ export interface ChallengeRecord {
 export interface DailyPlanRecord {
   key: string;
   questionIds: string[];
+  /** 퀴즈를 만들 때의 하루 목표 · 관심 프레임워크 — 바뀌면 오늘의 퀴즈를 다시 만든다 */
+  goal?: number;
+  framework?: FrameworkId;
   problemId?: string;
   cardId?: string;
   review?: { kind: 'pattern' | 'challenge'; id: string };

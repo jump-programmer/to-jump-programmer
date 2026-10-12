@@ -13,6 +13,8 @@
 | 코드 리뷰 패턴 + 리뷰 퀴즈 | `review/<spring\|nest\|django>.ts` |
 | 코드 리뷰의 다른 언어 버전 (Spring Boot Kotlin) | `review/spring-kotlin.ts` = `spring-kotlin-patterns.ts` + `spring-kotlin-challenges.ts` |
 
+CS 카테고리를 새로 만들면 앱의 `src/content/cs/categories.ts` 에 등록하고, `src/content/index.ts` 의 `CS_CONTENT` 에도 추가합니다. 언어 카테고리(`group: 'language'`, 예: Kotlin)라면 같은 파일의 `FRAMEWORK_LANGUAGE_CATEGORIES` 에서 그 언어를 쓰는 프레임워크에 넣어야 오늘의 퀴즈에 나옵니다. 빠뜨리면 `npm test` 가 실패합니다.
+
 콘텐츠를 추가/수정한 뒤에는 반드시 동기화하고 검증 스크립트를 실행하세요.
 
 ```bash

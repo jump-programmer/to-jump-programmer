@@ -4,12 +4,20 @@
  */
 import assert from 'node:assert/strict';
 
+import { CS_CATEGORIES, CS_CONTENT, FRAMEWORK_LANGUAGE_CATEGORIES, QUESTION_MAP, QUESTION_SOURCE } from '../src/content';
 import { backupFileName, createBackup, describeBackup, parseBackup } from '../src/features/progress/backup';
+import {
+  composeDailyQuiz,
+  csQuestionIdsForFramework,
+  dailyQuizQuota,
+  isQuestionForFramework,
+  type DailyQuizInput,
+} from '../src/features/progress/daily-quiz';
 import type { ProgressData } from '../src/features/progress/store';
 import { resultsMatch } from '../src/features/runner/core/compare';
 import { parseHarnessOutput } from '../src/features/runner/core/protocol';
 import { signatureText, starterCode } from '../src/features/runner/core/languages';
-import { computeBestStreak, computeStreak, dayKey } from '../src/lib/date';
+import { computeBestStreak, computeStreak, dayKey, seededRandom } from '../src/lib/date';
 import { diffLines, diffStats } from '../src/lib/diff';
 import { highlightLines } from '../src/lib/highlight';
 import { parseInline, parseMarkdown } from '../src/lib/markdown';
@@ -138,6 +146,87 @@ test('잘못된 백업 파일은 거절', () => {
   reject({ ...ok, progress: { ...ok.progress, quiz: [] } });
   reject({ ...ok, progress: { ...ok.progress, daily: 'x' } });
   reject({ ...ok, drafts: { drafts: { a: 1 }, lastLanguage: {} } });
+});
+
+console.log('daily quiz');
+const ids = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}${i}`);
+const compose = (input: Partial<DailyQuizInput> & { goal: number }) =>
+  composeDailyQuiz({ wrong: [], cs: ids('c', 40), algo: ids('a', 40), seen: () => false, random: seededRandom(7), ...input });
+test('하루 목표를 틀린 문제 : CS : 알고리즘 = 2 : 4 : 2 로 나눔', () => {
+  assert.deepEqual(dailyQuizQuota(5), { wrong: 1, cs: 3, algo: 1 });
+  assert.deepEqual(dailyQuizQuota(8), { wrong: 2, cs: 4, algo: 2 }); // 예전 고정 구성
+  assert.deepEqual(dailyQuizQuota(10), { wrong: 2, cs: 5, algo: 3 });
+  assert.deepEqual(dailyQuizQuota(20), { wrong: 5, cs: 10, algo: 5 });
+  assert.deepEqual(dailyQuizQuota(30), { wrong: 7, cs: 15, algo: 8 });
+});
+test('목표 5 · 10 · 20 · 30 만큼 출제, 영역별 몫 · 틀린 문제 먼저', () => {
+  const wrong = ['c39', 'a39', 'c38', 'a38', 'c37', 'a37', 'c36', 'a36'];
+  const seen = (id: string) => wrong.includes(id);
+  for (const goal of [5, 10, 20, 30]) {
+    const quota = dailyQuizQuota(goal);
+    const quiz = compose({ goal, wrong, seen });
+    assert.equal(quiz.length, goal);
+    assert.equal(new Set(quiz).size, goal);
+    assert.deepEqual(quiz.slice(0, quota.wrong), wrong.slice(0, quota.wrong));
+    const fresh = quiz.slice(quota.wrong);
+    assert.equal(fresh.filter((id) => id.startsWith('c')).length, quota.cs);
+    assert.equal(fresh.filter((id) => id.startsWith('a')).length, quota.algo);
+    assert.ok(fresh.every((id) => !seen(id))); // 안 본 문제가 충분하면 본 문제는 다시 안 냄
+  }
+  assert.deepEqual(compose({ goal: 10, wrong, seen }), compose({ goal: 10, wrong, seen })); // 같은 날 · 같은 시드면 같은 구성
+});
+test('후보가 모자라면 다른 영역에서 채우고, 전체보다 많으면 있는 만큼만', () => {
+  const quiz = compose({ goal: 10, cs: ids('c', 2) });
+  assert.equal(quiz.length, 10);
+  assert.equal(quiz.filter((id) => id.startsWith('c')).length, 2);
+  // 틀린 문제가 없으면 그 몫도 새 문제로
+  assert.equal(compose({ goal: 20 }).length, 20);
+  // 안 본 문제를 다 쓰면 이미 푼 문제로 채움
+  const seenAll = compose({ goal: 10, cs: ids('c', 3), algo: ids('a', 3), seen: (id) => id.endsWith('0') });
+  assert.equal(seenAll.length, 6);
+  assert.ok(seenAll.slice(-2).every((id) => id.endsWith('0')));
+  assert.equal(compose({ goal: 30, cs: ids('c', 4), algo: ids('a', 3) }).length, 7);
+  assert.deepEqual(compose({ goal: 10, cs: [], algo: [] }), []);
+});
+test('목표를 바꿔도 오늘 이미 푼 문제는 남김', () => {
+  const keep = ['c1', 'a1', 'c2'];
+  const wrong = ['c39', 'a39', 'c38', 'a38', 'c37'];
+  const quiz = compose({ goal: 20, keep, wrong, seen: (id) => keep.includes(id) || wrong.includes(id) });
+  assert.equal(quiz.length, 20);
+  assert.deepEqual(quiz.slice(0, 3), keep);
+  assert.deepEqual(quiz.slice(3, 8), wrong);
+  // 남긴 문제도 영역 몫(CS 10 · 알고리즘 5)에 포함
+  assert.equal(quiz.slice(8).filter((id) => id.startsWith('c')).length, 8);
+  assert.equal(quiz.slice(8).filter((id) => id.startsWith('a')).length, 4);
+  // 목표를 줄이면 앞에서부터 목표 수만큼
+  assert.deepEqual(compose({ goal: 5, keep: ids('c', 8) }), ids('c', 5));
+});
+test('언어 CS 문제는 관심 프레임워크의 언어만, 다른 카테고리는 그대로', () => {
+  const languageIds = CS_CATEGORIES.filter((c) => c.group === 'language').map((c) => c.id);
+  // 매핑에는 실제 언어 카테고리만, 모든 언어 카테고리는 어느 프레임워크에선가 출제
+  for (const list of Object.values(FRAMEWORK_LANGUAGE_CATEGORIES)) assert.ok(list.every((id) => languageIds.includes(id)));
+  assert.deepEqual([...new Set(Object.values(FRAMEWORK_LANGUAGE_CATEGORIES).flat())].sort(), [...languageIds].sort());
+  assert.deepEqual(FRAMEWORK_LANGUAGE_CATEGORIES.django, ['python']);
+  assert.deepEqual(FRAMEWORK_LANGUAGE_CATEGORIES.nest, ['javascript']);
+  assert.ok(FRAMEWORK_LANGUAGE_CATEGORIES.spring.includes('java'));
+
+  const otherIds = CS_CATEGORIES.filter((c) => c.group !== 'language').flatMap((c) => CS_CONTENT[c.id]?.quiz.map((q) => q.id) ?? []);
+  assert.ok(otherIds.length > 0);
+  for (const fw of ['spring', 'nest', 'django'] as const) {
+    const cs = csQuestionIdsForFramework(fw);
+    const allowed = FRAMEWORK_LANGUAGE_CATEGORIES[fw];
+    const categories = new Set(cs.map((id) => QUESTION_MAP[id].categoryId));
+    assert.ok(otherIds.every((id) => cs.includes(id)), `${fw}: 비언어 카테고리 문제가 빠짐`);
+    for (const lang of languageIds) {
+      const hasQuiz = (CS_CONTENT[lang]?.quiz.length ?? 0) > 0;
+      assert.equal(categories.has(lang), allowed.includes(lang) && hasQuiz, `${fw} · ${lang}`);
+    }
+    assert.ok(cs.every((id) => isQuestionForFramework(id, fw)));
+    const java = CS_CONTENT.java.quiz[0]?.id;
+    if (java) assert.equal(isQuestionForFramework(java, fw), fw === 'spring');
+  }
+  assert.equal(isQuestionForFramework(Object.keys(QUESTION_MAP).find((id) => QUESTION_SOURCE[id] === 'algo')!, 'django'), true);
+  assert.equal(isQuestionForFramework('없는-문제', 'spring'), false);
 });
 
 console.log('date');
