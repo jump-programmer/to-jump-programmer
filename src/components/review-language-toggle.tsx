@@ -46,6 +46,6 @@ export function ReviewLanguageToggle<L extends CodeLanguage>({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  chips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  chips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', flexShrink: 1 },
   hint: { flexBasis: '100%' },
 });
