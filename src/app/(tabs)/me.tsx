@@ -65,16 +65,16 @@ export default function MeTab() {
       <SectionHeader title="트랙별 진행 상황" />
       <Card style={{ gap: spacing.lg }}>
         <TrackRow
+          title="알고리즘 유형 학습"
+          color={c.algo}
+          value={summary.algo.patterns ? summary.algo.patternsRead / summary.algo.patterns : 0}
+          right={`${summary.algo.patternsRead}/${summary.algo.patterns}`}
+        />
+        <TrackRow
           title="알고리즘 개념 퀴즈"
           color={c.algo}
           value={summary.algo.quiz.progress}
           right={`${summary.algo.quiz.attempted}/${summary.algo.quiz.total} · 정답률 ${Math.round(summary.algo.quiz.accuracy * 100)}%`}
-        />
-        <TrackRow
-          title="코딩 문제 해결"
-          color={c.algo}
-          value={summary.algo.problems ? summary.algo.solved / summary.algo.problems : 0}
-          right={`${summary.algo.solved}/${summary.algo.problems}`}
         />
         <TrackRow
           title="코드 리뷰 패턴 학습"

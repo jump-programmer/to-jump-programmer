@@ -94,7 +94,7 @@ export function parseBackup(text: string): ParsedBackup {
   };
 }
 
-/** 복원 전에 보여줄 요약 (예: "2026. 10. 10. 백업 · 학습한 날 12일 · 퀴즈 80문항 · 문제 5개") */
+/** 복원 전에 보여줄 요약 (예: "2026. 10. 10. 백업 · 학습한 날 12일 · 퀴즈 80문항 · 알고리즘 유형 5개") */
 export function describeBackup(b: BackupFile): string {
   const count = (v: unknown) => (isObject(v) ? Object.keys(v).length : 0);
   const date = b.exportedAt ? new Date(b.exportedAt) : null;
@@ -102,7 +102,7 @@ export function describeBackup(b: BackupFile): string {
     date && !Number.isNaN(date.getTime()) ? `${date.toLocaleDateString('ko-KR')} 백업` : '백업',
     `학습한 날 ${count(b.progress.activity)}일`,
     `퀴즈 ${count(b.progress.quiz)}문항`,
-    `코딩 문제 ${count(b.progress.problems)}개`,
+    `알고리즘 유형 ${count(b.progress.algoPatterns)}개`,
     `면접 카드 ${count(b.progress.cards)}장`,
   ];
   return parts.join(' · ');
