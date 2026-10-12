@@ -1,37 +1,8 @@
 /**
- * 오늘의 퀴즈 구성 — 하루 목표(profile.dailyGoal)만큼, 관심 프레임워크에 맞는 언어 문제만 낸다.
+ * 오늘의 퀴즈 구성 — 하루 목표(profile.dailyGoal)만큼, 코스에 맞는 문제만(후보는 course.ts) 낸다.
  * React Native 를 가져오지 않으므로 Node 테스트(scripts/test-core.ts)에서도 쓴다.
  */
-import {
-  CS_CATEGORIES,
-  CS_CATEGORY_MAP,
-  CS_CONTENT,
-  FRAMEWORK_LANGUAGE_CATEGORIES,
-  QUESTION_MAP,
-  QUESTION_SOURCE,
-  type CsCategory,
-  type FrameworkId,
-} from '@/content';
 import { shuffle } from '@/lib/date';
-
-/** 오늘의 퀴즈에 내는 CS 카테고리 — 언어 카테고리는 관심 프레임워크의 언어만 */
-export function csCategoriesForFramework(framework: FrameworkId): CsCategory[] {
-  const languages = FRAMEWORK_LANGUAGE_CATEGORIES[framework];
-  return CS_CATEGORIES.filter((c) => c.group !== 'language' || languages.includes(c.id));
-}
-
-export function csQuestionIdsForFramework(framework: FrameworkId): string[] {
-  return csCategoriesForFramework(framework).flatMap((c) => (CS_CONTENT[c.id]?.quiz ?? []).map((q) => q.id));
-}
-
-/** 관심 프레임워크와 맞지 않는 언어 카테고리의 CS 문제만 false (알고리즘 문제는 모두 true) */
-export function isQuestionForFramework(id: string, framework: FrameworkId): boolean {
-  const q = QUESTION_MAP[id];
-  if (!q) return false;
-  if (QUESTION_SOURCE[id] !== 'cs') return true;
-  const category = CS_CATEGORY_MAP[q.categoryId];
-  return category?.group !== 'language' || FRAMEWORK_LANGUAGE_CATEGORIES[framework].includes(category.id);
-}
 
 export interface DailyQuizQuota {
   wrong: number;
@@ -45,6 +16,16 @@ export function dailyQuizQuota(goal: number): DailyQuizQuota {
   const cs = Math.round(total / 2);
   const wrong = Math.floor((total - cs) / 2);
   return { wrong, cs, algo: total - cs - wrong };
+}
+
+/** 묶음들을 번갈아 하나씩 꺼내 한 줄로 — 안 본 문제끼리 먼저, 그다음 본 문제끼리 */
+function interleave(lists: string[][], seen: (id: string) => boolean): string[] {
+  const round = (ls: string[][]) => {
+    const out: string[] = [];
+    for (let i = 0; ls.some((l) => i < l.length); i++) for (const l of ls) if (i < l.length) out.push(l[i]);
+    return out;
+  };
+  return [...round(lists.map((l) => l.filter((id) => !seen(id)))), ...round(lists.map((l) => l.filter(seen)))];
 }
 
 /** 안 본 문제를 먼저, 각각 섞어서 */
@@ -66,8 +47,9 @@ export interface DailyQuizInput {
   goal: number;
   /** 틀린 문제 (최근에 틀린 순) */
   wrong: readonly string[];
-  /** CS · 알고리즘 후보 */
-  cs: readonly string[];
+  /** CS 후보 묶음 — 여러 묶음이면 번갈아 고른다 (풀스택: 백엔드 · 프론트엔드 · 공통) */
+  cs: readonly (readonly string[])[];
+  /** 알고리즘 후보 */
   algo: readonly string[];
   /** 한 번이라도 푼 문제 */
   seen: (id: string) => boolean;
@@ -101,7 +83,9 @@ export function composeDailyQuiz({ goal, wrong, cs, algo, seen, random, keep = [
     if (from) quota[from]--;
   }
 
-  const csList = preferUnseen(cs, seen, random);
+  // 묶음마다 섞은 뒤 번갈아 늘어놓는다. 어느 묶음부터 시작할지도 날짜(random)에 따라 바뀐다
+  const start = cs.length > 1 ? Math.floor(random() * cs.length) : 0;
+  const csList = interleave([...cs.slice(start), ...cs.slice(0, start)].map((g) => preferUnseen(g, seen, random)), seen);
   const algoList = preferUnseen(algo, seen, random);
   const fresh = (list: string[]) => list.filter((id) => !seen(id));
   take(wrong, quota.wrong);

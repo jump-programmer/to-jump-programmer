@@ -10,10 +10,13 @@
 | 알고리즘 토픽 개념 + 퀴즈 | `algorithm/quiz/<토픽 id>.ts` |
 | 알고리즘 문제 유형 + 구현 예제 | `algorithm/patterns/<유형 id>.ts` (파일 1개 = 유형 1개) |
 | CS 퀴즈 + 면접 카드 | `cs/<카테고리 id>.ts` |
-| 코드 리뷰 패턴 + 리뷰 퀴즈 | `review/<spring\|nest\|django>.ts` |
+| 코드 리뷰 패턴 + 리뷰 퀴즈 | `review/<spring\|nest\|django\|react\|vue>.ts` |
 | 코드 리뷰의 다른 언어 버전 (Spring Boot Kotlin) | `review/spring-kotlin.ts` = `spring-kotlin-patterns.ts` + `spring-kotlin-challenges.ts` |
 
-CS 카테고리를 새로 만들면 앱의 `src/content/cs/categories.ts` 에 등록하고, `src/content/index.ts` 의 `CS_CONTENT` 에도 추가합니다. 언어 카테고리(`group: 'language'`, 예: Kotlin)라면 같은 파일의 `FRAMEWORK_LANGUAGE_CATEGORIES` 에서 그 언어를 쓰는 프레임워크에 넣어야 오늘의 퀴즈에 나옵니다. 빠뜨리면 `npm test` 가 실패합니다.
+CS 카테고리를 새로 만들면 앱의 `src/content/cs/categories.ts` 에 등록하고, `src/content/index.ts` 의 `CS_CONTENT` 에도 추가합니다.
+- 코스(`track`): 백엔드 전용이면 `'backend'`, 프론트엔드 전용이면 `'frontend'`, 두 코스 공통이면 비워 둡니다. 코스에 맞지 않는 카테고리는 면접 CS 탭 아래쪽(다른 코스)에 접혀 있고 오늘의 학습에 나오지 않습니다.
+- 언어 카테고리(`group: 'language'`, 예: Kotlin)라면 같은 파일의 `FRAMEWORK_LANGUAGE_CATEGORIES` 에서 그 언어를 쓰는 프레임워크에 넣어야 오늘의 퀴즈에 나옵니다. 빠뜨리면 `npm test` 가 실패합니다.
+- 프레임워크 카테고리(`group: 'framework'`)는 `framework` 에 프레임워크 id 를 적습니다. 그 프레임워크를 고른 사용자에게만 오늘의 퀴즈로 나옵니다.
 
 콘텐츠를 추가/수정한 뒤에는 반드시 동기화하고 검증 스크립트를 실행하세요.
 
@@ -45,7 +48,7 @@ npm run validate -- --quick # 구조 검증만
 | 번호 목록 | `1. 항목` | 줄 맨 앞, 중첩 불가 |
 | 소제목 | `### 제목` | `###`만 지원 |
 | 팁 박스 | `> 내용` | 연속된 `>` 줄은 하나의 박스 |
-| 코드 블록 | ` ```java ` ... ` ``` ` | 언어: java, kotlin, python, cpp, javascript, typescript, sql, json, yaml, bash, text |
+| 코드 블록 | ` ```java ` ... ` ``` ` | 언어: java, kotlin, python, cpp, javascript, typescript, tsx, vue, html, css, sql, json, yaml, bash, text |
 | 표 | `\| a \| b \|` + `\|---\|---\|` | 헤더 1줄 + 구분선 + 본문 (셀 안에는 인라인 문법만) |
 
 **지원하지 않는 문법**: 링크, 이미지, 기울임(`*a*`), 중첩 목록, HTML, `#`/`##` 제목.
@@ -94,6 +97,14 @@ nums.sort()
   - `issues[].lines`는 `code.source` 기준 1부터 시작하는 라인 번호이며, 검증 스크립트가 범위를 확인합니다.
   - `question.options`는 5~6개, 그중 정답(`correct: true`) 2~4개. 오답 선택지는 코드에 실제로 없는 문제여야 합니다.
   - `improved`는 모든 이슈를 해결한 베스트 개선안입니다.
+
+- 리뷰 카테고리(`category`)는 성능 · 보안 · 설계 · 트랜잭션 · 예외 처리 · 동시성 · 가독성 · 테스트 · API 설계에 더해, 프론트엔드용 **상태 관리(`state`) · 접근성(`accessibility`)** 이 있습니다.
+
+### 프론트엔드 (React · Vue)
+- **React**: 코드 언어 `tsx` (TypeScript + 함수 컴포넌트 · Hooks). 파일명 예: `OrderList.tsx`. 서버 데이터는 TanStack Query, 전역 상태는 Zustand/Context 등 실무에서 흔한 조합을 씁니다. React 18+ 기준.
+- **Vue**: 코드 언어 `vue` (단일 파일 컴포넌트, `<script setup lang="ts">` + `<template>`, 필요하면 `<style scoped>`). 파일명 예: `OrderList.vue`. Vue 3 Composition API · Pinia 기준.
+- 숨기는 이슈는 프론트엔드 실무 리뷰에서 자주 지적되는 것으로 고릅니다. 예: 불필요한 리렌더링 · 의존성 배열 누락 · 경쟁 상태(race condition) · 메모리 누수(정리하지 않은 구독 · 타이머) · 파생 상태를 상태로 중복 저장 · 키(key) 오용 · XSS(`dangerouslySetInnerHTML`, `v-html`) · 접근성(클릭 가능한 `div`, `label` 누락) · 에러 · 로딩 상태 누락.
+- JSX · 템플릿 안의 `{`·`}` 나 `${` 는 TypeScript 템플릿 리터럴 안에서 `\${` 로 이스케이프해야 하는 경우만 주의합니다(`{count}` 는 그대로 씁니다).
 
 ### 5-1. 다른 언어 버전 (Spring Boot 의 Kotlin)
 

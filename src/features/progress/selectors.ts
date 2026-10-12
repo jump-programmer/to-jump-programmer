@@ -4,19 +4,27 @@ import {
   ALGO_QUIZ,
   ALGO_TOPICS,
   ALL_ALGO_PATTERNS,
-  ALL_CARD_IDS,
   CARD_MAP,
-  CHALLENGE_MAP,
   CS_CATEGORIES,
   CS_CONTENT,
-  PATTERN_MAP,
   QUESTION_MAP,
   REVIEW_CONTENT,
-  type FrameworkId,
+  REVIEW_FRAMEWORKS,
+  trackSides,
 } from '@/content';
 import { dayKey, hashString, seededRandom } from '@/lib/date';
 
-import { composeDailyQuiz, csQuestionIdsForFramework, isQuestionForFramework } from './daily-quiz';
+import {
+  cardCategoriesForCourse,
+  courseCategoryIds,
+  courseKey,
+  csQuestionGroupsForCourse,
+  isCategoryInTrack,
+  isQuestionForCourse,
+  sideFramework,
+  sideOfDay,
+} from './course';
+import { composeDailyQuiz } from './daily-quiz';
 import { useProgress, type DailyPlanRecord, type ProgressState, type QuizRecord } from './store';
 
 export interface QuizSetStats {
@@ -77,7 +85,14 @@ export interface TrackSummary {
   cs: { quiz: QuizSetStats; cardsReviewed: number; cards: number };
 }
 
+/** 학습 트랙 요약 — 코드 리뷰 · CS 는 코스(백엔드 · 프론트엔드 · 풀스택) 범위만 센다 */
 export function trackSummary(state: ProgressState): TrackSummary {
+  const sides = trackSides(state.profile.track);
+  const reviews = REVIEW_FRAMEWORKS.filter((f) => sides.includes(f.track)).map((f) => REVIEW_CONTENT[f.id]);
+  const patternIds = reviews.flatMap((r) => r.patterns.map((p) => p.id));
+  const challengeIds = reviews.flatMap((r) => r.challenges.map((ch) => ch.id));
+  const cats = CS_CATEGORIES.filter((cat) => isCategoryInTrack(cat, state.profile.track));
+  const cardIds = cats.flatMap((cat) => csCategoryCardIds(cat.id));
   return {
     algo: {
       quiz: quizSetStats(ALL_ALGO_QUESTION_IDS, state.quiz),
@@ -85,15 +100,18 @@ export function trackSummary(state: ProgressState): TrackSummary {
       patterns: ALL_ALGO_PATTERNS.length,
     },
     review: {
-      patternsRead: Object.keys(state.patterns).filter((id) => PATTERN_MAP[id]).length,
-      patterns: Object.keys(PATTERN_MAP).length,
-      challengesDone: Object.keys(state.challenges).filter((id) => CHALLENGE_MAP[id]).length,
-      challenges: Object.keys(CHALLENGE_MAP).length,
+      patternsRead: patternIds.filter((id) => state.patterns[id]).length,
+      patterns: patternIds.length,
+      challengesDone: challengeIds.filter((id) => state.challenges[id]).length,
+      challenges: challengeIds.length,
     },
     cs: {
-      quiz: quizSetStats(ALL_CS_QUESTION_IDS, state.quiz),
-      cardsReviewed: Object.keys(state.cards).filter((id) => CARD_MAP[id]).length,
-      cards: ALL_CARD_IDS.length,
+      quiz: quizSetStats(
+        cats.flatMap((cat) => csCategoryQuestionIds(cat.id)),
+        state.quiz,
+      ),
+      cardsReviewed: cardIds.filter((id) => state.cards[id]).length,
+      cards: cardIds.length,
     },
   };
 }
@@ -117,14 +135,14 @@ export type DailyPlan = DailyPlanRecord;
 const answeredOn = (quiz: Record<string, QuizRecord>, id: string, key: string) =>
   !!quiz[id] && dayKey(new Date(quiz[id].lastAt)) === key;
 
-/** 오늘의 퀴즈 — 하루 목표만큼, 관심 프레임워크에 맞는 언어 문제만. keep 은 그대로 남길 문제 (오늘 이미 푼 문제) */
+/** 오늘의 퀴즈 — 하루 목표만큼, 코스에 맞는 문제만. keep 은 그대로 남길 문제 (오늘 이미 푼 문제) */
 export function dailyQuestionIds(state: ProgressState, date: Date = new Date(), keep: string[] = []): string[] {
-  const fw: FrameworkId = state.profile.framework;
-  const inScope = (id: string) => isQuestionForFramework(id, fw);
+  const categoryIds = courseCategoryIds(state.profile);
+  const inScope = (id: string) => isQuestionForCourse(id, state.profile, categoryIds);
   return composeDailyQuiz({
     goal: state.profile.dailyGoal,
     wrong: wrongQuestionIds(state.quiz, inScope),
-    cs: csQuestionIdsForFramework(fw),
+    cs: csQuestionGroupsForCourse(state.profile),
     algo: ALL_ALGO_QUESTION_IDS,
     seen: (id) => !!state.quiz[id],
     random: seededRandom(hashString(`${dayKey(date)}:${state.profile.nickname}:quiz`)),
@@ -133,30 +151,25 @@ export function dailyQuestionIds(state: ProgressState, date: Date = new Date(), 
 }
 
 export function dailyPlan(state: ProgressState, date: Date = new Date()): DailyPlan {
-  const key = dayKey(date);
-  const random = seededRandom(hashString(`${key}:${state.profile.nickname}`));
-  const questionIds = dailyQuestionIds(state, date);
+  return {
+    key: dayKey(date),
+    questionIds: dailyQuestionIds(state, date),
+    goal: state.profile.dailyGoal,
+    course: courseKey(state.profile),
+    algoPatternId: pickAlgoPattern(state, date),
+    cardId: pickCard(state, date),
+    review: pickReview(state, date),
+  };
+}
 
-  const algoPatternId = pickAlgoPattern(state, date);
-
-  const cardPool = ALL_CARD_IDS.filter((id) => !state.cards[id]);
-  const cards = cardPool.length ? cardPool : ALL_CARD_IDS;
-  const cardId = cards.length ? cards[Math.floor(random() * cards.length)] : undefined;
-
-  const fw: FrameworkId = state.profile.framework;
-  const content = REVIEW_CONTENT[fw];
-  const patterns = content.patterns.filter((p) => !state.patterns[p.id]);
-  const challenges = content.challenges.filter((c) => !state.challenges[c.id]);
-  let review: DailyPlan['review'];
-  if (patterns.length && (random() < 0.5 || !challenges.length)) {
-    review = { kind: 'pattern', id: patterns[Math.floor(random() * patterns.length)].id };
-  } else if (challenges.length) {
-    review = { kind: 'challenge', id: challenges[Math.floor(random() * challenges.length)].id };
-  } else if (content.patterns.length) {
-    review = { kind: 'pattern', id: content.patterns[Math.floor(random() * content.patterns.length)].id };
-  }
-
-  return { key, questionIds, goal: state.profile.dailyGoal, framework: fw, algoPatternId, cardId, review };
+/** 오늘의 면접 질문 — 코스 범위에서 아직 안 본 카드 (풀스택은 리뷰와 엇갈리게 날마다 백엔드 · 프론트엔드를 번갈아) */
+export function pickCard(state: ProgressState, date: Date = new Date()): string | undefined {
+  const random = seededRandom(hashString(`${dayKey(date)}:${state.profile.nickname}`));
+  const side = sideOfDay(state.profile.track, date, 1);
+  const all = cardCategoriesForCourse(state.profile, side).flatMap((cat) => csCategoryCardIds(cat.id));
+  const unseen = all.filter((id) => !state.cards[id]);
+  const pool = unseen.length ? unseen : all;
+  return pool.length ? pool[Math.floor(random() * pool.length)] : undefined;
 }
 
 /** 오늘 공부할 알고리즘 유형 — 아직 안 본 유형 중 목표(신입: 기초~중급, 경력: 중급~심화)에 맞는 것 */
@@ -180,11 +193,11 @@ function todayPlan(daily: DailyPlan | null, key: string): DailyPlan | null {
 /** 알고리즘 유형 추천이 없는 플랜 (유형 학습 도입 전에 만든 오늘의 플랜) */
 const missingPattern = (plan: DailyPlan) => !plan.algoPatternId && ALL_ALGO_PATTERNS.length > 0;
 
-/** 퀴즈가 지금의 하루 목표 · 관심 프레임워크로 만든 것인지 */
+/** 퀴즈가 지금의 하루 목표 · 코스로 만든 것인지 */
 function quizUpToDate(plan: DailyPlan, profile: ProgressState['profile']): boolean {
   return (
     plan.goal === profile.dailyGoal &&
-    plan.framework === profile.framework &&
+    plan.course === courseKey(profile) &&
     plan.questionIds.length > 0 &&
     plan.questionIds.every((id) => QUESTION_MAP[id])
   );
@@ -192,7 +205,7 @@ function quizUpToDate(plan: DailyPlan, profile: ProgressState['profile']): boole
 
 /**
  * 오늘의 추천을 하루 동안 고정해서 돌려준다 (필요하면 새로 만든다).
- * 하루 목표나 관심 프레임워크가 바뀌면 퀴즈만 다시 만들고, 오늘 이미 푼 문제는 남긴다.
+ * 하루 목표나 코스가 바뀌면 퀴즈를 다시 만들고(오늘 이미 푼 문제는 남긴다), 코스가 바뀌면 면접 질문도 다시 고른다.
  * 유형 학습 도입 전에 만든 오늘의 플랜에는 알고리즘 유형 추천만 채운다.
  */
 export function useDailyPlan(): DailyPlan {
@@ -203,15 +216,17 @@ export function useDailyPlan(): DailyPlan {
   if (today && quizUpToDate(today, profile) && !missingPattern(today)) return today;
 
   const state = useProgress.getState();
+  const course = courseKey(profile);
   const plan: DailyPlan = today
     ? {
         ...today,
         goal: profile.dailyGoal,
-        framework: profile.framework,
+        course,
         questionIds: quizUpToDate(today, profile)
           ? today.questionIds
           : dailyQuestionIds(state, new Date(), answeredToday(today, state.quiz, key)),
         algoPatternId: today.algoPatternId ?? pickAlgoPattern(state),
+        cardId: today.course === course ? today.cardId : pickCard(state),
       }
     : dailyPlan(state);
   if (plan.questionIds.length > 0) {
@@ -230,9 +245,18 @@ export function answeredToday(plan: DailyPlan, quiz: Record<string, QuizRecord>,
   return plan.questionIds.filter((id) => answeredOn(quiz, id, key));
 }
 
-/** 오늘의 코드 리뷰 추천 — 관심 프레임워크가 바뀌어도 바로 반영되도록 매번 계산한다 */
+/**
+ * 오늘의 코드 리뷰 추천 — 코스 · 프레임워크가 바뀌어도 바로 반영되도록 매번 계산한다.
+ * 풀스택은 날마다 백엔드 · 프론트엔드를 번갈아 추천하고, 그쪽 콘텐츠가 없으면 다른 쪽에서 고른다.
+ */
 export function pickReview(state: ProgressState, date: Date = new Date()): DailyPlanRecord['review'] {
-  const fw: FrameworkId = state.profile.framework;
+  const side = sideOfDay(state.profile.track, date);
+  const sides = side === 'backend' ? (['backend', 'frontend'] as const) : (['frontend', 'backend'] as const);
+  const candidates = trackSides(state.profile.track).length > 1 ? sides : [side];
+  const fw = candidates
+    .map((s) => sideFramework(state.profile, s))
+    .find((f) => REVIEW_CONTENT[f].patterns.length + REVIEW_CONTENT[f].challenges.length > 0);
+  if (!fw) return undefined;
   const content = REVIEW_CONTENT[fw];
   const random = seededRandom(hashString(`${dayKey(date)}:${fw}:review`));
   const patterns = content.patterns.filter((p) => !state.patterns[p.id]);

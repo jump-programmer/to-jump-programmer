@@ -18,10 +18,10 @@ import {
   ALGO_QUIZ,
   ALGO_TOPIC_MAP,
   QUESTION_MAP,
-  SOLVE_LANGUAGE_IDS,
   type AlgoPattern,
 } from '@/content';
 import { AdSlot } from '@/features/ads';
+import { solveLanguagesFor } from '@/features/progress/course';
 import { useProgress } from '@/features/progress/store';
 import { formatValue } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
@@ -46,6 +46,7 @@ export default function AlgoPatternScreen() {
 function PatternContent({ pattern }: { pattern: AlgoPattern }) {
   const c = useColors();
   const language = useProgress((s) => s.profile.language);
+  const track = useProgress((s) => s.profile.track);
   const updateProfile = useProgress((s) => s.updateProfile);
   const read = useProgress((s) => !!s.algoPatterns[pattern.id]);
   const markRead = useProgress((s) => s.markAlgoPatternRead);
@@ -163,7 +164,7 @@ function PatternContent({ pattern }: { pattern: AlgoPattern }) {
         subtitle={pattern.implementations.length > 1 ? `${pattern.implementations.length}가지 방법을 비교해 보세요` : undefined}
       />
       <ReviewLanguageToggle
-        languages={SOLVE_LANGUAGE_IDS}
+        languages={solveLanguagesFor(track)}
         value={language}
         onChange={(l) => updateProfile({ language: l })}
         tint={c.algo}

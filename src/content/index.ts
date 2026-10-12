@@ -22,8 +22,11 @@ import twoPointer from './data/algorithm/quiz/two-pointer';
 import unionFind from './data/algorithm/quiz/union-find';
 import { CS_CATEGORIES } from './cs/categories';
 import architecture from './data/cs/architecture';
+import browser from './data/cs/browser';
 import database from './data/cs/database';
 import datastructure from './data/cs/datastructure';
+import frontendPractice from './data/cs/frontend-practice';
+import htmlCss from './data/cs/html-css';
 import csDjango from './data/cs/django';
 import infra from './data/cs/infra';
 import java from './data/cs/java';
@@ -34,12 +37,18 @@ import oop from './data/cs/oop';
 import os from './data/cs/os';
 import practice from './data/cs/practice';
 import python from './data/cs/python';
+import csReact from './data/cs/react';
 import security from './data/cs/security';
 import csSpring from './data/cs/spring';
+import csVue from './data/cs/vue';
+import webPerformance from './data/cs/web-performance';
+import webSecurity from './data/cs/web-security';
 import reviewDjango from './data/review/django';
 import reviewNest from './data/review/nest';
+import reviewReact from './data/review/react';
 import reviewSpring from './data/review/spring';
 import reviewSpringKotlin from './data/review/spring-kotlin';
+import reviewVue from './data/review/vue';
 import { REVIEW_FRAMEWORK_MAP } from './review/frameworks';
 import type {
   AlgoPattern,
@@ -60,10 +69,14 @@ export * from './types';
 export { ALGO_TOPICS, ALGO_TOPIC_MAP } from './algorithm/topics';
 export { CS_CATEGORIES, CS_CATEGORY_MAP, CS_GROUPS, FRAMEWORK_LANGUAGE_CATEGORIES } from './cs/categories';
 export {
+  DEV_TRACK_LABEL,
+  DEV_TRACKS,
   REVIEW_CATEGORY_LABEL,
   REVIEW_FRAMEWORK_MAP,
   REVIEW_FRAMEWORKS,
   SEVERITY_LABEL,
+  TRACK_SIDE_LABEL,
+  trackSides,
 } from './review/frameworks';
 
 export const ALGO_QUIZ: Record<string, AlgoTopicContent> = {
@@ -96,6 +109,13 @@ export const CS_CONTENT: Record<string, CsCategoryContent> = {
   spring: csSpring,
   nestjs,
   django: csDjango,
+  react: csReact,
+  vue: csVue,
+  browser,
+  'html-css': htmlCss,
+  'web-performance': webPerformance,
+  'web-security': webSecurity,
+  'frontend-practice': frontendPractice,
   architecture,
   infra,
   oop,
@@ -106,6 +126,8 @@ export const REVIEW_CONTENT: Record<FrameworkId, ReviewFrameworkContent> = {
   spring: reviewSpring,
   nest: reviewNest,
   django: reviewDjango,
+  react: reviewReact,
+  vue: reviewVue,
 };
 
 /** 리뷰 콘텐츠의 다른 언어 버전 (프레임워크 → 언어 → id 별 코드 · 설명) */

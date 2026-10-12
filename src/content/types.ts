@@ -24,6 +24,10 @@ export type CodeLanguage =
   | 'json'
   | 'yaml'
   | 'bash'
+  | 'tsx'
+  | 'vue'
+  | 'html'
+  | 'css'
   | 'text';
 
 export interface CodeSnippet {
@@ -94,7 +98,7 @@ export interface InterviewCard {
 /* CS (기술 면접)                                                        */
 /* ------------------------------------------------------------------ */
 
-export type CsGroupId = 'fundamentals' | 'language' | 'framework' | 'architecture' | 'practice';
+export type CsGroupId = 'fundamentals' | 'language' | 'framework' | 'web' | 'architecture' | 'practice';
 
 export interface CsCategory {
   id: string;
@@ -103,6 +107,10 @@ export interface CsCategory {
   description: string;
   /** Ionicons 아이콘 이름 */
   icon: string;
+  /** 이 카테고리를 주로 쓰는 코스. 없으면 백엔드 · 프론트엔드 공통 */
+  track?: TrackSide;
+  /** 프레임워크 카테고리(group 'framework')가 다루는 프레임워크 */
+  framework?: FrameworkId;
 }
 
 /** 카테고리별 콘텐츠 파일(src/content/cs/<id>.ts)이 export 하는 형태 */
@@ -115,7 +123,14 @@ export interface CsCategoryContent {
 /* 코드 리뷰                                                             */
 /* ------------------------------------------------------------------ */
 
-export type FrameworkId = 'spring' | 'nest' | 'django';
+/* 개발자 코스 — 백엔드 · 프론트엔드 · 풀스택(둘 다) */
+export type DevTrack = 'backend' | 'frontend' | 'fullstack';
+/** 콘텐츠가 속하는 코스 (풀스택은 두 쪽을 모두 본다) */
+export type TrackSide = 'backend' | 'frontend';
+
+export type BackendFrameworkId = 'spring' | 'nest' | 'django';
+export type FrontendFrameworkId = 'react' | 'vue';
+export type FrameworkId = BackendFrameworkId | FrontendFrameworkId;
 
 export type ReviewCategory =
   | 'performance' // 성능
@@ -126,7 +141,9 @@ export type ReviewCategory =
   | 'concurrency' // 동시성
   | 'readability' // 가독성·유지보수
   | 'testing' // 테스트
-  | 'api-design'; // API 설계
+  | 'api-design' // API 설계
+  | 'state' // 상태 관리 (프론트엔드)
+  | 'accessibility'; // 웹 접근성 (프론트엔드)
 
 export type Severity = 'critical' | 'major' | 'minor';
 
@@ -250,6 +267,8 @@ export interface ReviewVariantContent {
 
 export interface ReviewFramework {
   id: FrameworkId;
+  /** 백엔드 / 프론트엔드 코스 구분 */
+  track: TrackSide;
   title: string;
   subtitle: string;
   /** 대표 언어 (코드 하이라이팅 기본값) */
