@@ -1,9 +1,9 @@
-# 웹 버전(PWA)을 GitHub Pages 에 배포한다 — https://jump-programmer.github.io/to-jump-programmer/
+# 웹 버전(PWA)을 Cloudflare Workers(정적 자산)에 배포한다 — https://jumpprogrammer.app
 # main 에 푸시하면 실행되고, Actions 탭에서 직접 실행할 수도 있다. 설정 방법은 docs/WEB.md 참고.
 #   - Secrets  CONTENT_DEPLOY_KEY : 비공개 콘텐츠 저장소(lgm1007/to-jump-content)의 읽기 전용 배포 키(SSH 개인 키)
+#   - Secrets  CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID : Cloudflare 배포용 ("Edit Cloudflare Workers" 토큰)
 #   - Variables(선택) ADSENSE_CLIENT · ADSENSE_SLOT : Google AdSense 게시자 ID(ca-pub-…) · 광고 단위 ID
 #   - Variables(선택) RUNNER_URL : Java · Kotlin · C++ 실행 서버 기본 주소
-#   - Settings › Pages › Build and deployment › Source: GitHub Actions
 name: Deploy web
 
 on:
@@ -13,17 +13,18 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # 배포가 겹치면 먼저 시작한 배포를 끝까지 진행한다
 concurrency:
-  group: pages
+  group: deploy-web
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://jumpprogrammer.app
     env:
       TJ_CONTENT_DIR: ${{ github.workspace }}/.content
     steps:
@@ -51,25 +52,18 @@ jobs:
 
       - run: npm test
 
-      - name: 웹 빌드
+      - name: 웹 빌드 (도메인 루트)
         run: npm run build:web
         env:
-          TJ_WEB_BASE_URL: /${{ github.event.repository.name }}
-          TJ_WEB_ORIGIN: https://${{ github.repository_owner }}.github.io
+          TJ_WEB_ORIGIN: https://jumpprogrammer.app
           EXPO_PUBLIC_ADSENSE_CLIENT: ${{ vars.ADSENSE_CLIENT }}
           EXPO_PUBLIC_ADSENSE_SLOT: ${{ vars.ADSENSE_SLOT }}
           EXPO_PUBLIC_RUNNER_URL: ${{ vars.RUNNER_URL }}
 
-      - uses: actions/upload-pages-artifact@v5
+      - name: Cloudflare 배포
+        uses: cloudflare/wrangler-action@v4
         with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.142.0'
+          command: deploy

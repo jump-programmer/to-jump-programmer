@@ -1,18 +1,20 @@
 /**
  * 웹(PWA) 빌드 — expo export 결과(dist/)를 설치 가능한 오프라인 웹 앱으로 만든다.
  *   npm run build:web                                         # 로컬 확인용 (사이트 루트 /)
- *   TJ_WEB_BASE_URL=/to-jump-programmer npm run build:web     # GitHub Pages 프로젝트 사이트
+ *   TJ_WEB_ORIGIN=https://jumpprogrammer.app npm run build:web  # 배포용 (Cloudflare, 도메인 루트)
+ *   TJ_WEB_BASE_URL=/to-jump-programmer npm run build:web     # 하위 경로에 둘 때 (예: GitHub Pages 프로젝트 사이트)
  *   npm run preview:web                                       # dist/ 를 GitHub Pages 처럼 띄워 확인
  *
  * 1) expo export -p web (TJ_WEB_BASE_URL → app.config.ts 의 experiments.baseUrl)
  * 2) index.html <head> 에 manifest · 홈 화면 아이콘 · 테마 색 · 서비스 워커 등록 · (설정 시) AdSense 코드 추가
- * 3) 404.html — GitHub Pages 는 없는 경로에 404.html 을 주므로, 같은 앱을 내려 주어 /quiz 같은 주소로 바로 들어와도 열리게 한다
+ * 3) 404.html — 없는 경로에 404.html 을 주는 정적 호스팅(GitHub Pages 등)에서도 /quiz 같은 주소로 바로 들어오면 앱이 열리게 한다
  * 4) 콘텐츠 페이지별 index.html(404 대신 200 으로 열리게) · sitemap.xml(TJ_WEB_ORIGIN 이 있을 때) — scripts/web-routes.ts
- * 5) manifest.webmanifest · 서비스 워커(sw.js, Workbox) 생성
+ * 5) 도메인 루트에 둘 때: robots.txt · ads.txt · app-ads.txt (AdSense · AdMob 판매자 인증)
+ * 6) manifest.webmanifest · 서비스 워커(sw.js, Workbox) 생성
  *
  * 환경 변수 (모두 선택)
- *   TJ_WEB_BASE_URL                 배포 경로 (예: /to-jump-programmer)
- *   TJ_WEB_ORIGIN                   사이트 주소 (예: https://jump-programmer.github.io) — 있으면 sitemap.xml · 링크 미리보기 태그를 만든다
+ *   TJ_WEB_BASE_URL                 배포 경로 (예: /to-jump-programmer). 없으면 도메인 루트
+ *   TJ_WEB_ORIGIN                   사이트 주소 (예: https://jumpprogrammer.app) — 있으면 sitemap.xml · 링크 미리보기 태그를 만든다
  *   EXPO_PUBLIC_ADSENSE_CLIENT      AdSense 게시자 ID (ca-pub-…) — 없으면 광고 코드를 넣지 않는다
  *   EXPO_PUBLIC_ADSENSE_SLOT        AdSense 디스플레이 광고 단위 ID (숫자)
  *   EXPO_PUBLIC_RUNNER_URL          Java · Kotlin · C++ 실행 서버 기본 주소
@@ -130,6 +132,20 @@ function writeRoutes() {
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
+/** 도메인 루트에만 의미가 있는 파일 — 하위 경로 배포에서는 만들지 않는다 */
+function writeRootFiles() {
+  if (BASE) return;
+  if (ORIGIN) {
+    writeFileSync(join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+  }
+  if (ADSENSE_CLIENT) {
+    // AdSense(웹)와 AdMob(앱)은 같은 게시자 ID 를 쓴다. app-ads.txt 는 스토어에 등록할 개발자 웹사이트용
+    const line = `google.com, ${ADSENSE_CLIENT.replace(/^ca-/, '')}, DIRECT, f08c47fec0942fa0\n`;
+    writeFileSync(join(DIST, 'ads.txt'), line);
+    writeFileSync(join(DIST, 'app-ads.txt'), line);
+  }
+}
+
 async function writeServiceWorker() {
   const { count, size, warnings } = await generateSW({
     globDirectory: DIST,
@@ -172,6 +188,7 @@ if (!existsSync(join(DIST, 'index.html'))) {
 patchIndex();
 writeManifest();
 writeRoutes();
+writeRootFiles();
 await writeServiceWorker();
 console.log(
   `✓ 웹 빌드 완료: dist/ (경로 ${PREFIX}${ADSENSE_CLIENT ? `, AdSense ${ADSENSE_CLIENT}` : ', 광고 코드 없음'})`,

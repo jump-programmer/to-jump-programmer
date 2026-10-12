@@ -1,7 +1,7 @@
 # To Jump Programmer 개인정보 처리방침
 
 > 앱 내 [마이 › 설정 › 개인정보 처리방침] 화면(`src/content/legal.ts`)과 같은 내용입니다.
-> 웹 버전에서는 앱의 `/privacy` 화면이 공개 URL 역할을 합니다 (예: https://jump-programmer.github.io/to-jump-programmer/privacy). 스토어·AdSense 등록 시 이 주소를 입력하세요.
+> 웹 버전에서는 앱의 `/privacy` 화면이 공개 URL 역할을 합니다 (https://jumpprogrammer.app/privacy). 스토어·AdSense 등록 시 이 주소를 입력하세요.
 
 ### 1. 수집하는 개인정보
 To Jump Programmer(이하 "앱", 모바일 앱과 웹 버전을 포함합니다)는 회원가입 기능이 없으며, 이름·이메일·전화번호 등 개인을 직접 식별할 수 있는 정보를 수집하지 않습니다. 다만 앱을 무료로 운영하기 위해 광고를 표시하며, 이 과정에서 광고 사업자(Google)가 4항의 정보를 자동으로 수집할 수 있습니다.

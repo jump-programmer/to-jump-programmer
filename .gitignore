@@ -6,6 +6,8 @@ node_modules/
 # Expo
 .expo/
 dist/
+# Cloudflare Wrangler 로컬 캐시
+.wrangler/
 web-build/
 expo-env.d.ts
 
