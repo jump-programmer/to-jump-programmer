@@ -1,26 +1,37 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AlgoPatternRow } from '@/components/algo-pattern-row';
 import { ProblemRow } from '@/components/problem-row';
 import { RichText } from '@/components/rich-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Divider, EmptyState, IconBadge, SectionHeader } from '@/components/ui/misc';
+import { ProgressBar } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
+import { SegmentedControl } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
-import { ALGO_QUIZ, ALGO_TOPIC_MAP, ALL_PROBLEMS } from '@/content';
+import { ALGO_PATTERNS, ALGO_QUIZ, ALGO_TOPIC_MAP, ALL_PROBLEMS } from '@/content';
 import { AdSlot } from '@/features/ads';
 import { algoTopicQuestionIds, quizSetStats, wrongQuestionIds } from '@/features/progress/selectors';
 import { useProgress } from '@/features/progress/store';
 import { useColors } from '@/theme/theme-provider';
 import { spacing } from '@/theme/tokens';
 
+type Tab = 'theory' | 'patterns';
+
 export default function TopicScreen() {
   const c = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const topic = ALGO_TOPIC_MAP[id];
   const content = ALGO_QUIZ[id];
+  const patterns = ALGO_PATTERNS[id] ?? [];
   const quiz = useProgress((s) => s.quiz);
+  const algoPatterns = useProgress((s) => s.algoPatterns);
+  const readCount = patterns.filter((p) => algoPatterns[p.id]).length;
+  // 처음 들어오면 개념 정리부터, 유형을 하나라도 공부했으면 유형 목록부터 보여준다
+  const [tab, setTab] = useState<Tab>(() => (patterns.length && readCount > 0 ? 'patterns' : 'theory'));
 
   if (!topic) {
     return (
@@ -34,6 +45,7 @@ export default function TopicScreen() {
   const stats = quizSetStats(ids, quiz);
   const wrong = wrongQuestionIds(quiz, (qid) => ids.includes(qid));
   const related = ALL_PROBLEMS.filter((p) => p.topics.includes(id));
+  const showPatterns = patterns.length > 0 && tab === 'patterns';
 
   return (
     <Screen
@@ -68,37 +80,74 @@ export default function TopicScreen() {
         </View>
       </View>
 
-      {stats.attempted > 0 && (
+      {(patterns.length > 0 || stats.attempted > 0) && (
         <Card style={styles.stats}>
-          <View style={{ flex: 1 }}>
+          {patterns.length > 0 && (
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text variant="caption" color="textTertiary">
+                유형 학습
+              </Text>
+              <Text variant="title3">
+                {readCount}/{patterns.length}
+              </Text>
+              <ProgressBar value={readCount / patterns.length} color={c.algo} height={5} />
+            </View>
+          )}
+          <View style={{ flex: 1, gap: 6 }}>
             <Text variant="caption" color="textTertiary">
-              푼 문제
+              개념 퀴즈
             </Text>
             <Text variant="title3">
               {stats.attempted}/{stats.total}
             </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="caption" color="textTertiary">
-              현재 정답률
-            </Text>
-            <Text variant="title3" tint={c.algo}>
-              {Math.round(stats.accuracy * 100)}%
+            <Text variant="small" tint={c.algo}>
+              {stats.attempted ? `정답률 ${Math.round(stats.accuracy * 100)}%` : '아직 안 풀었어요'}
             </Text>
           </View>
         </Card>
       )}
 
-      <SectionHeader title="개념 정리" />
-      <Card style={{ gap: spacing.md }}>
-        {content?.primer ? (
-          <RichText text={content.primer} variant="callout" />
-        ) : (
-          <Text variant="callout" color="textTertiary">
-            개념 정리를 준비하고 있어요.
-          </Text>
-        )}
-      </Card>
+      {patterns.length > 0 && (
+        <SegmentedControl
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'theory', label: '개념 정리' },
+            { value: 'patterns', label: `유형별 예제 ${patterns.length}` },
+          ]}
+        />
+      )}
+
+      {showPatterns ? (
+        <Card padded={false}>
+          {patterns.map((p, i) => (
+            <View key={p.id}>
+              {i > 0 && <Divider inset={spacing.lg} />}
+              <AlgoPatternRow pattern={p} />
+            </View>
+          ))}
+        </Card>
+      ) : (
+        <>
+          <Card style={{ gap: spacing.md }}>
+            {content?.primer ? (
+              <RichText text={content.primer} variant="callout" />
+            ) : (
+              <Text variant="callout" color="textTertiary">
+                개념 정리를 준비하고 있어요.
+              </Text>
+            )}
+          </Card>
+          {patterns.length > 0 && (
+            <Button
+              title={`자주 나오는 유형 ${patterns.length}가지 보기`}
+              icon="arrow-forward"
+              variant="secondary"
+              onPress={() => setTab('patterns')}
+            />
+          )}
+        </>
+      )}
 
       {related.length > 0 && (
         <>

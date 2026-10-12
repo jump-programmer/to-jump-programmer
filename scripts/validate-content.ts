@@ -5,8 +5,9 @@
  *   npx tsx scripts/validate-content.ts --quick         # 구조 검증만
  *   npx tsx scripts/validate-content.ts --section problems --only two-sum,merge-intervals --langs python,java
  *   npx tsx scripts/validate-content.ts --section cs --only os,network
+ *   npx tsx scripts/validate-content.ts --section patterns --only binary-search   # 토픽 id 또는 유형 id
  *
- * --section: cs | review | algo-quiz | problems (쉼표로 여러 개)
+ * --section: cs | review | algo-quiz | patterns | problems (쉼표로 여러 개)
  * --langs: python | javascript | java | kotlin | cpp (기본: 전부)
  *
  * Kotlin 은 KOTLINC(컴파일러 경로)와 KOTLIN_JAVA_HOME(컴파일·실행 JDK)로 Piston 과 같은 조합을 지정할 수 있다.
@@ -22,15 +23,18 @@ import { ALGO_TOPICS, EXTRA_PROBLEM_TAGS } from '../src/content/algorithm/topics
 import { CS_CATEGORIES } from '../src/content/cs/categories';
 import { REVIEW_FRAMEWORKS } from '../src/content/review/frameworks';
 import type {
+  AlgoPattern,
   AlgoProblem,
   AlgoTopicContent,
   CodeSnippet,
+  CompareMode,
   CsCategoryContent,
   InterviewCard,
   QuizQuestion,
   ReviewChallenge,
   ReviewFrameworkContent,
   ReviewVariantContent,
+  Signature,
   SolveLanguage,
   TestCase,
   ValueType,
@@ -59,7 +63,7 @@ function option(name: string): string | undefined {
 }
 const QUICK = flag('quick');
 const ONLY = option('only')?.split(',').filter(Boolean);
-const SECTIONS = new Set((option('section') ?? 'cs,review,algo-quiz,problems').split(','));
+const SECTIONS = new Set((option('section') ?? 'cs,review,algo-quiz,patterns,problems').split(','));
 const ALL_LANGS: SolveLanguage[] = ['python', 'javascript', 'java', 'kotlin', 'cpp'];
 const LANGS = (option('langs')?.split(',') ?? ALL_LANGS) as SolveLanguage[];
 
@@ -523,43 +527,33 @@ function matchesType(v: unknown, t: ValueType): boolean {
   }
 }
 
-function checkProblemStructure(p: AlgoProblem, file: string): boolean {
-  const w = `problem/${p?.id}`;
-  checkId(p.id, w);
-  if (`${p.id}.ts` !== file) err(w, `파일명(${file})과 id 가 다릅니다`);
-  nonEmpty(p.title, w, 'title', 2);
-  if (![1, 2, 3].includes(p.level)) err(w, 'level 은 1|2|3');
-  const topicIds = new Set([...ALGO_TOPICS.map((t) => t.id), ...Object.keys(EXTRA_PROBLEM_TAGS)]);
-  if (!Array.isArray(p.topics) || p.topics.length === 0) err(w, 'topics 가 비어있습니다');
-  p.topics?.forEach((t) => !topicIds.has(t) && err(w, `알 수 없는 topic: ${t}`));
-  checkRich(p.description, w, 'description', 40);
-  if (!Array.isArray(p.constraints) || p.constraints.length === 0) err(w, 'constraints 가 비어있습니다');
-  p.constraints?.forEach((c, i) => checkInline(c, w, `constraints[${i}]`));
-  if (p.exampleNotes) checkRich(p.exampleNotes, w, 'exampleNotes');
-  if (!Array.isArray(p.hints) || p.hints.length === 0) err(w, 'hints 가 비어있습니다');
-  checkRich(p.explanation, w, 'explanation', 80);
-  nonEmpty(p.complexity?.time, w, 'complexity.time');
-  nonEmpty(p.complexity?.space, w, 'complexity.space');
-  if (p.compare && !['exact', 'unordered', 'float'].includes(p.compare)) err(w, `compare 오류: ${p.compare}`);
-
+/** 시그니처와 테스트 입출력 형식 검사 (코딩 문제 · 알고리즘 유형 예제 공용) */
+function checkSignatureAndCases(
+  w: string,
+  sig: Signature | undefined,
+  examples: TestCase[],
+  tests: TestCase[],
+  compare: CompareMode | undefined,
+  min: { examples: number; tests: number },
+): boolean {
   let ok = true;
-  const sig = p.signature;
+  if (compare && !['exact', 'unordered', 'float'].includes(compare)) err(w, `compare 오류: ${compare}`);
   if (!sig || !Array.isArray(sig.params) || !VALUE_TYPES.has(sig.returns)) {
     err(w, 'signature 형식 오류');
     return false;
   }
-  if (p.compare === 'unordered' && !['int[]', 'long[]', 'double[]', 'bool[]', 'string[]'].includes(sig.returns)) {
+  if (compare === 'unordered' && !['int[]', 'long[]', 'double[]', 'bool[]', 'string[]'].includes(sig.returns)) {
     err(w, "compare: 'unordered' 는 1차원 배열 반환에만 사용");
   }
-  if (sig.returns === 'double' && p.compare !== 'float') warn(w, "double 반환은 compare: 'float' 권장");
+  if (sig.returns === 'double' && compare !== 'float') warn(w, "double 반환은 compare: 'float' 권장");
   sig.params.forEach((prm) => {
     if (!/^[a-z][A-Za-z0-9_]*$/.test(prm.name)) err(w, `매개변수 이름 오류: ${prm.name} (camelCase)`);
     if (RESERVED.has(prm.name)) err(w, `매개변수 이름 '${prm.name}' 는 일부 언어의 예약어/표준 이름과 충돌합니다`);
     if (!VALUE_TYPES.has(prm.type)) err(w, `매개변수 타입 오류: ${prm.type}`);
   });
-  const checkCases = (cases: TestCase[], label: string, min: number) => {
-    if (!Array.isArray(cases) || cases.length < min) {
-      err(w, `${label} 는 최소 ${min}개`);
+  const checkCases = (cases: TestCase[], label: string, minCount: number) => {
+    if (!Array.isArray(cases) || cases.length < minCount) {
+      err(w, `${label} 는 최소 ${minCount}개`);
       ok = false;
       return;
     }
@@ -581,24 +575,70 @@ function checkProblemStructure(p: AlgoProblem, file: string): boolean {
       }
     });
   };
-  checkCases(p.examples, 'examples', 1);
-  checkCases(p.tests, 'tests', 5);
-  const size = JSON.stringify([p.examples, p.tests]).length;
+  checkCases(examples, 'examples', min.examples);
+  checkCases(tests, 'tests', min.tests);
+  const size = JSON.stringify([examples, tests]).length;
   if (size > 15000) warn(w, `테스트 데이터가 큽니다 (${(size / 1024).toFixed(1)}KB > 15KB)`);
+  return ok;
+}
+
+/** 언어별 코드가 하니스가 부르는 solution 함수 형태인지, 오래된 컴파일러에서도 되는 문법인지 */
+function checkSolutionCode(w: string, code: Record<SolveLanguage, string> | undefined, field: string): boolean {
+  let ok = true;
   for (const lang of ALL_LANGS) {
-    if (!nonEmpty(p.solutions?.[lang], w, `solutions.${lang}`, 20)) ok = false;
+    if (!nonEmpty(code?.[lang], w, `${field}.${lang}`, 20)) ok = false;
   }
-  // Piston 의 Kotlin 은 1.8.20 이므로 1.9 이후 문법은 실행 서버에서 컴파일되지 않는다
-  if (p.solutions?.kotlin && /\.\.<|\b[A-Z]\w*\.entries\b|\bdata\s+object\b|\benumEntries\b/.test(p.solutions.kotlin)) {
-    warn(w, 'Kotlin 모범 답안은 Kotlin 1.8 호환이어야 합니다 (..<, enum 의 entries, data object 금지)');
+  if (!code) return false;
+  // 코딩 테스트 사이트의 Kotlin 은 1.8 이하인 곳이 많아 1.9 이후 문법은 쓰지 않는다
+  if (code.kotlin && /\.\.<|\b[A-Z]\w*\.entries\b|\bdata\s+object\b|\benumEntries\b/.test(code.kotlin)) {
+    warn(w, `${field}.kotlin 은 Kotlin 1.8 호환이어야 합니다 (..<, enum 의 entries, data object 금지)`);
   }
-  if (p.solutions?.kotlin && !/\bclass\s+Solution\b[\s\S]*\bfun\s+solution\s*\(/.test(p.solutions.kotlin)) {
-    err(w, 'Kotlin 모범 답안은 class Solution { fun solution(...) } 형태여야 합니다');
+  if (code.kotlin && !/\bclass\s+Solution\b[\s\S]*\bfun\s+solution\s*\(/.test(code.kotlin)) {
+    err(w, `${field}.kotlin 은 class Solution { fun solution(...) } 형태여야 합니다`);
     ok = false;
   }
-  if (p.solutions?.java && /\brecord\s+\w+\s*\(|\.toList\(\)|instanceof\s+\w+\s+\w+\s*[)&|]/.test(p.solutions.java)) {
-    warn(w, 'Java 모범 답안은 Java 15 호환이어야 합니다 (record, Stream.toList(), instanceof 패턴 금지)');
+  if (code.java && !/\bclass\s+Solution\b[\s\S]*\bsolution\s*\(/.test(code.java)) {
+    err(w, `${field}.java 는 class Solution { public ... solution(...) } 형태여야 합니다`);
+    ok = false;
   }
+  if (code.java && /\brecord\s+\w+\s*\(|\.toList\(\)|instanceof\s+\w+\s+\w+\s*[)&|]/.test(code.java)) {
+    warn(w, `${field}.java 는 Java 15 호환이어야 합니다 (record, Stream.toList(), instanceof 패턴 금지)`);
+  }
+  if (code.python && !/^def\s+solution\s*\(/m.test(code.python)) {
+    err(w, `${field}.python 은 def solution(...) 함수가 있어야 합니다`);
+    ok = false;
+  }
+  if (code.javascript && !/\bfunction\s+solution\s*\(/.test(code.javascript)) {
+    err(w, `${field}.javascript 는 function solution(...) 함수가 있어야 합니다`);
+    ok = false;
+  }
+  if (code.cpp && !/\bsolution\s*\(/.test(code.cpp)) {
+    err(w, `${field}.cpp 는 solution(...) 함수가 있어야 합니다`);
+    ok = false;
+  }
+  return ok;
+}
+
+function checkProblemStructure(p: AlgoProblem, file: string): boolean {
+  const w = `problem/${p?.id}`;
+  checkId(p.id, w);
+  if (`${p.id}.ts` !== file) err(w, `파일명(${file})과 id 가 다릅니다`);
+  nonEmpty(p.title, w, 'title', 2);
+  if (![1, 2, 3].includes(p.level)) err(w, 'level 은 1|2|3');
+  const topicIds = new Set([...ALGO_TOPICS.map((t) => t.id), ...Object.keys(EXTRA_PROBLEM_TAGS)]);
+  if (!Array.isArray(p.topics) || p.topics.length === 0) err(w, 'topics 가 비어있습니다');
+  p.topics?.forEach((t) => !topicIds.has(t) && err(w, `알 수 없는 topic: ${t}`));
+  checkRich(p.description, w, 'description', 40);
+  if (!Array.isArray(p.constraints) || p.constraints.length === 0) err(w, 'constraints 가 비어있습니다');
+  p.constraints?.forEach((c, i) => checkInline(c, w, `constraints[${i}]`));
+  if (p.exampleNotes) checkRich(p.exampleNotes, w, 'exampleNotes');
+  if (!Array.isArray(p.hints) || p.hints.length === 0) err(w, 'hints 가 비어있습니다');
+  checkRich(p.explanation, w, 'explanation', 80);
+  nonEmpty(p.complexity?.time, w, 'complexity.time');
+  nonEmpty(p.complexity?.space, w, 'complexity.space');
+
+  let ok = checkSignatureAndCases(w, p.signature, p.examples, p.tests, p.compare, { examples: 1, tests: 5 });
+  if (!checkSolutionCode(w, p.solutions, 'solutions')) ok = false;
   return ok;
 }
 
@@ -645,9 +685,9 @@ interface LangRun {
   outputs: { ok: boolean; value: unknown }[];
 }
 
-async function runPython(p: AlgoProblem, cases: TestCase[]): Promise<LangRun> {
+async function runPython(code: string, cases: TestCase[]): Promise<LangRun> {
   const res = await exec('python3', ['-I', join(ROOT, 'scripts', 'lib', 'run_python.py')], {
-    input: JSON.stringify({ code: p.solutions.python, tests: cases.map((c) => c.input), timeLimitSec: 10 }),
+    input: JSON.stringify({ code, tests: cases.map((c) => c.input), timeLimitSec: 10 }),
     timeoutMs: 120_000,
   });
   if (res.timedOut) return { fatal: '전체 시간 초과', outputs: [] };
@@ -660,10 +700,10 @@ async function runPython(p: AlgoProblem, cases: TestCase[]): Promise<LangRun> {
   }
 }
 
-async function runJavascript(p: AlgoProblem, cases: TestCase[]): Promise<LangRun> {
+async function runJavascript(code: string, cases: TestCase[]): Promise<LangRun> {
   const ctx = vm.createContext({ console: { log() {}, error() {}, warn() {}, info() {} } });
   try {
-    vm.runInContext(p.solutions.javascript, ctx, { timeout: 5000 });
+    vm.runInContext(code, ctx, { timeout: 5000 });
   } catch (e) {
     return { fatal: String(e), outputs: [] };
   }
@@ -679,12 +719,11 @@ async function runJavascript(p: AlgoProblem, cases: TestCase[]): Promise<LangRun
   return { outputs };
 }
 
-async function runCompiled(lang: 'java' | 'kotlin' | 'cpp', p: AlgoProblem, cases: TestCase[]): Promise<LangRun> {
+async function runCompiled(lang: 'java' | 'kotlin' | 'cpp', userCode: string, sig: Signature, cases: TestCase[]): Promise<LangRun> {
   const dir = mkdtempSync(join(tmpdir(), `tj-${lang}-`));
   try {
-    const userCode = p.solutions[lang];
     if (lang === 'kotlin') {
-      const prog = buildKotlinProgram(userCode, p.signature, cases);
+      const prog = buildKotlinProgram(userCode, sig, cases);
       writeFileSync(join(dir, 'Main.kt'), prog.source);
       const c = await exec(KOTLINC, ['-nowarn', 'Main.kt', '-include-runtime', '-d', 'code.jar'], { cwd: dir, timeoutMs: 180_000, env: KOTLIN_ENV });
       if (c.code !== 0) return { fatal: mapKotlinErrors(c.stderr || c.stdout, prog.offset).slice(0, 3000), outputs: [] };
@@ -692,7 +731,7 @@ async function runCompiled(lang: 'java' | 'kotlin' | 'cpp', p: AlgoProblem, case
       return collectHarness(r, cases.length);
     }
     if (lang === 'java') {
-      const prog = buildJavaProgram(userCode, p.signature, cases);
+      const prog = buildJavaProgram(userCode, sig, cases);
       writeFileSync(join(dir, 'Main.java'), prog.source);
       const c = await exec('javac', ['--release', '15', '-encoding', 'UTF-8', '-nowarn', '-d', 'out', 'Main.java'], {
         cwd: dir,
@@ -702,7 +741,7 @@ async function runCompiled(lang: 'java' | 'kotlin' | 'cpp', p: AlgoProblem, case
       const r = await exec('java', ['-cp', 'out', 'Main'], { cwd: dir, timeoutMs: 60_000 });
       return collectHarness(r, cases.length);
     }
-    const prog = buildCppProgram(userCode, p.signature, cases);
+    const prog = buildCppProgram(userCode, sig, cases);
     writeFileSync(join(dir, 'solution.cpp'), prog.source);
     const c = await exec('clang++', ['-std=c++17', '-O2', '-o', 'sol', 'solution.cpp'], { cwd: dir, timeoutMs: 120_000 });
     if (c.code !== 0) {
@@ -728,15 +767,26 @@ function collectHarness(r: ExecOutput, n: number): LangRun {
   return { outputs };
 }
 
-async function runProblem(p: AlgoProblem) {
-  const cases = [...p.examples, ...p.tests];
-  const w = `problem/${p.id}`;
+interface RunTarget {
+  /** 리포트 위치 (예: problem/two-sum, pattern/binary-search-lower-bound#1) */
+  where: string;
+  code: Record<SolveLanguage, string>;
+  signature: Signature;
+  examples: TestCase[];
+  tests: TestCase[];
+  compare?: CompareMode;
+}
+
+/** 언어별 코드를 예제 + 테스트로 실행해 기대값과 비교한다 */
+async function runTarget(t: RunTarget) {
+  const cases = [...t.examples, ...t.tests];
+  const w = t.where;
   for (const lang of LANGS) {
     const started = Date.now();
     let run: LangRun;
-    if (lang === 'python') run = await runPython(p, cases);
-    else if (lang === 'javascript') run = await runJavascript(p, cases);
-    else run = await runCompiled(lang, p, cases);
+    if (lang === 'python') run = await runPython(t.code.python, cases);
+    else if (lang === 'javascript') run = await runJavascript(t.code.javascript, cases);
+    else run = await runCompiled(lang, t.code[lang], t.signature, cases);
     if (run.fatal) {
       err(w, `[${lang}] 실행 실패:\n${run.fatal}`);
       continue;
@@ -744,18 +794,39 @@ async function runProblem(p: AlgoProblem) {
     let failed = 0;
     run.outputs.forEach((o, i) => {
       const c = cases[i];
-      const label = i < p.examples.length ? `examples[${i}]` : `tests[${i - p.examples.length}]`;
+      const label = i < t.examples.length ? `examples[${i}]` : `tests[${i - t.examples.length}]`;
       if (!o.ok) {
         failed++;
         err(w, `[${lang}] ${label} 에러: ${String(o.value).slice(0, 300)}`);
-      } else if (!resultsMatch(c.output, o.value, p.compare ?? 'exact')) {
+      } else if (!resultsMatch(c.output, o.value, t.compare ?? 'exact')) {
         failed++;
         err(w, `[${lang}] ${label} 불일치\n      입력: ${formatValue(c.input, 200)}\n      기대: ${formatValue(c.output, 200)}\n      실제: ${formatValue(o.value, 200)}`);
       }
     });
     const ms = Date.now() - started;
-    console.log(`    ${failed === 0 ? '✓' : '✗'} ${p.id} [${lang}] ${cases.length - failed}/${cases.length} (${ms}ms)`);
+    console.log(`    ${failed === 0 ? '✓' : '✗'} ${w} [${lang}] ${cases.length - failed}/${cases.length} (${ms}ms)`);
   }
+}
+
+/** Kotlin 컴파일러가 있는지 확인한다 (없으면 오류를 남기고 false) */
+function checkKotlinc(section: string): boolean {
+  if (!LANGS.includes('kotlin')) return true;
+  const v = spawnSync(KOTLINC, ['-version'], { env: KOTLIN_ENV });
+  if (v.status !== 0) {
+    err(section, `${KOTLINC} 를 찾을 수 없어 Kotlin 코드를 실행하지 못했습니다. (brew install kotlin 또는 --langs 로 제외)`);
+    return false;
+  }
+  console.log(`  ${`${v.stdout}${v.stderr}`.trim()}`);
+  return true;
+}
+
+/** 실행 대상을 4개씩 병렬로 실행한다 */
+async function runAll(targets: RunTarget[]) {
+  const queue = [...targets];
+  const workers = Array.from({ length: 4 }, async () => {
+    while (queue.length) await runTarget(queue.shift()!);
+  });
+  await Promise.all(workers);
 }
 
 async function validateProblems() {
@@ -774,23 +845,131 @@ async function validateProblems() {
     if (checkProblemStructure(p, f)) problems.push(p);
   }
   console.log(`  problems: ${files.length}개 (구조 검증 통과 ${problems.length}개)`);
-  if (QUICK) return;
-  if (LANGS.includes('kotlin')) {
-    const v = spawnSync(KOTLINC, ['-version'], { env: KOTLIN_ENV });
-    if (v.status !== 0) {
-      err('problems', `${KOTLINC} 를 찾을 수 없어 Kotlin 모범 답안을 실행하지 못했습니다. (brew install kotlin 또는 --langs 로 제외)`);
-      return;
+  if (QUICK || !checkKotlinc('problems')) return;
+  await runAll(
+    problems.map((p) => ({
+      where: `problem/${p.id}`,
+      code: p.solutions,
+      signature: p.signature,
+      examples: p.examples,
+      tests: p.tests,
+      compare: p.compare,
+    })),
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 알고리즘 유형별 구현 예제                                              */
+/* ------------------------------------------------------------------ */
+
+const LANG_LABEL: Record<SolveLanguage, string> = { python: 'Python', javascript: 'JavaScript', java: 'Java', kotlin: 'Kotlin', cpp: 'C++' };
+
+/** 핵심 해설의 언어별 줄 번호가 그 언어 코드 범위 안의 의미 있는 줄인지 */
+function checkKeyPointLines(lines: Record<SolveLanguage, number[]> | undefined, code: Record<SolveLanguage, string>, w: string) {
+  for (const lang of ALL_LANGS) {
+    const list = lines?.[lang];
+    if (!Array.isArray(list) || list.length === 0) {
+      err(w, `lines.${lang} 가 비어있습니다`);
+      continue;
     }
-    console.log(`  ${`${v.stdout}${v.stderr}`.trim()}`);
+    if (list.length > 12) warn(w, `lines.${lang} 가 ${list.length}줄입니다 — 핵심 줄만 고르세요`);
+    checkIssueLines(list, code?.[lang], `${w} [${LANG_LABEL[lang]}]`);
   }
-  const queue = [...problems];
-  const workers = Array.from({ length: 4 }, async () => {
-    while (queue.length) {
-      const p = queue.shift()!;
-      await runProblem(p);
-    }
+}
+
+function checkPatternStructure(p: AlgoPattern, file: string, quizIds: Set<string>, orders: Map<string, Set<number>>): boolean {
+  const w = `pattern/${p?.id}`;
+  checkId(p.id, w);
+  if (`${p.id}.ts` !== file) err(w, `파일명(${file})과 id 가 다릅니다`);
+  if (!ALGO_TOPICS.some((t) => t.id === p.topicId)) err(w, `알 수 없는 topicId: ${p.topicId}`);
+  else if (!p.id.startsWith(`${p.topicId}-`)) err(w, `id 는 토픽 id(${p.topicId}-)로 시작해야 합니다`);
+  if (!Number.isInteger(p.order) || p.order < 1) err(w, 'order 는 1 이상의 정수');
+  else {
+    const used = orders.get(p.topicId) ?? new Set<number>();
+    if (used.has(p.order)) err(w, `같은 토픽에 order ${p.order} 가 이미 있습니다`);
+    used.add(p.order);
+    orders.set(p.topicId, used);
+  }
+  nonEmpty(p.title, w, 'title', 2);
+  nonEmpty(p.summary, w, 'summary', 10) && checkInline(p.summary, w, 'summary');
+  if (![1, 2, 3].includes(p.difficulty)) err(w, 'difficulty 는 1|2|3');
+  if (!Array.isArray(p.whenToUse) || p.whenToUse.length < 2 || p.whenToUse.length > 5) err(w, 'whenToUse 는 2~5개');
+  p.whenToUse?.forEach((t, i) => nonEmpty(t, w, `whenToUse[${i}]`, 5) && checkInline(t, w, `whenToUse[${i}]`));
+  checkRich(p.approach, w, 'approach', 60);
+  p.pitfalls?.forEach((t, i) => nonEmpty(t, w, `pitfalls[${i}]`, 5) && checkInline(t, w, `pitfalls[${i}]`));
+  p.quizIds?.forEach((id) => !quizIds.has(id) && err(w, `quizIds 의 퀴즈가 없습니다: ${id}`));
+
+  const ex = p.example;
+  checkRich(ex?.description, w, 'example.description', 20);
+  let ok = checkSignatureAndCases(w, ex?.signature, ex?.examples, ex?.tests, ex?.compare, { examples: 1, tests: 5 });
+  if (Array.isArray(ex?.examples) && ex.examples.length > 3) warn(w, 'example.examples 는 3개 이하 권장 (화면에 모두 보입니다)');
+
+  const impls = p.implementations;
+  if (!Array.isArray(impls) || impls.length < 1 || impls.length > 3) {
+    err(w, 'implementations 는 1~3개');
+    return false;
+  }
+  impls.forEach((im, i) => {
+    const iw = `${w}#${i + 1}`;
+    nonEmpty(im.title, iw, 'title', 2);
+    nonEmpty(im.summary, iw, 'summary', 10) && checkInline(im.summary, iw, 'summary');
+    nonEmpty(im.complexity?.time, iw, 'complexity.time');
+    nonEmpty(im.complexity?.space, iw, 'complexity.space');
+    if (!checkSolutionCode(iw, im.code, 'code')) ok = false;
+    if (!Array.isArray(im.keyPoints) || im.keyPoints.length < 2 || im.keyPoints.length > 6) err(iw, 'keyPoints 는 2~6개');
+    im.keyPoints?.forEach((k, j) => {
+      const kw = `${iw} keyPoints[${j}]`;
+      nonEmpty(k.title, kw, 'title', 2);
+      checkRich(k.explanation, kw, 'explanation', 20);
+      if (im.code) checkKeyPointLines(k.lines, im.code, kw);
+    });
   });
-  await Promise.all(workers);
+  const titles = impls.map((im) => im.title);
+  if (new Set(titles).size !== titles.length) err(w, '구현 예제 title 이 겹칩니다');
+  return ok;
+}
+
+async function validateAlgoPatterns() {
+  const dir = join(CONTENT, 'algorithm', 'patterns');
+  if (!existsSync(dir)) {
+    err('patterns', `${dir} 폴더가 없습니다`);
+    return;
+  }
+  const quizIds = new Set<string>();
+  for (const topic of ALGO_TOPICS) {
+    const c = await importDefault<AlgoTopicContent>(join(CONTENT, 'algorithm', 'quiz', `${topic.id}.ts`));
+    c?.questions.forEach((q) => quizIds.add(q.id));
+  }
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
+    .filter((f) => !ONLY || ONLY.some((o) => f.replace(/\.ts$/, '') === o || f.startsWith(`${o}-`) || f.includes(o)))
+    .sort();
+  const orders = new Map<string, Set<number>>();
+  const patterns: AlgoPattern[] = [];
+  for (const f of files) {
+    const p = await importDefault<AlgoPattern>(join(dir, f));
+    if (!p) {
+      err(`pattern/${f}`, 'default export 가 없습니다');
+      continue;
+    }
+    if (checkPatternStructure(p, f, quizIds, orders)) patterns.push(p);
+  }
+  const perTopic = ALGO_TOPICS.map((t) => `${t.id} ${patterns.filter((p) => p.topicId === t.id).length}`).join(' · ');
+  const impls = patterns.reduce((n, p) => n + p.implementations.length, 0);
+  console.log(`  patterns: ${files.length}개 (구조 검증 통과 ${patterns.length}개, 구현 예제 ${impls}개)\n    ${perTopic}`);
+  if (QUICK || !checkKotlinc('patterns')) return;
+  await runAll(
+    patterns.flatMap((p) =>
+      p.implementations.map((im, i) => ({
+        where: `pattern/${p.id}#${i + 1}`,
+        code: im.code,
+        signature: p.example.signature,
+        examples: p.example.examples,
+        tests: p.example.tests,
+        compare: p.example.compare,
+      })),
+    ),
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -800,6 +979,7 @@ async function main() {
   if (SECTIONS.has('cs')) await validateCs();
   if (SECTIONS.has('algo-quiz')) await validateAlgoQuiz();
   if (SECTIONS.has('review')) await validateReview();
+  if (SECTIONS.has('patterns')) await validateAlgoPatterns();
   if (SECTIONS.has('problems')) await validateProblems();
   reportAnswerSkew();
 

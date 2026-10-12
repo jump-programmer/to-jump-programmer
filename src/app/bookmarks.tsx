@@ -6,7 +6,17 @@ import { Card } from '@/components/ui/card';
 import { Divider, EmptyState, IconBadge, ListRow, SectionHeader } from '@/components/ui/misc';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
-import { CARD_MAP, CHALLENGE_MAP, PATTERN_MAP, PROBLEM_MAP, QUESTION_MAP, resolveChallenge, resolvePattern } from '@/content';
+import {
+  ALGO_PATTERN_MAP,
+  ALGO_TOPIC_MAP,
+  CARD_MAP,
+  CHALLENGE_MAP,
+  PATTERN_MAP,
+  PROBLEM_MAP,
+  QUESTION_MAP,
+  resolveChallenge,
+  resolvePattern,
+} from '@/content';
 import { plainText } from '@/lib/markdown';
 import { useReviewLanguageMap } from '@/features/progress/review-language';
 import { useProgress } from '@/features/progress/store';
@@ -20,10 +30,12 @@ export default function BookmarksScreen() {
   const entries = Object.entries(bookmarks).sort((a, b) => b[1].at - a[1].at);
   const questions = entries.filter(([id]) => QUESTION_MAP[id]).map(([id]) => id);
   const cards = entries.filter(([id]) => CARD_MAP[id]).map(([id]) => id);
+  const algoPatterns = entries.filter(([id]) => ALGO_PATTERN_MAP[id]).map(([id]) => id);
   const problems = entries.filter(([id]) => PROBLEM_MAP[id]).map(([id]) => id);
   const patterns = entries.filter(([id]) => PATTERN_MAP[id]).map(([id]) => id);
   const challenges = entries.filter(([id]) => CHALLENGE_MAP[id]).map(([id]) => id);
-  const empty = !questions.length && !cards.length && !problems.length && !patterns.length && !challenges.length;
+  const empty =
+    !questions.length && !cards.length && !algoPatterns.length && !problems.length && !patterns.length && !challenges.length;
 
   return (
     <Screen>
@@ -32,7 +44,7 @@ export default function BookmarksScreen() {
         <EmptyState
           icon="bookmark-outline"
           title="북마크가 없어요"
-          description="퀴즈, 면접 카드, 문제, 리뷰 패턴 화면의 북마크 아이콘을 눌러 저장해보세요."
+          description="퀴즈, 면접 카드, 알고리즘 유형, 리뷰 패턴 화면의 북마크 아이콘을 눌러 저장해보세요."
         />
       )}
 
@@ -77,6 +89,22 @@ export default function BookmarksScreen() {
             style={{ marginBottom: spacing.md }}
             onPress={() => router.push({ pathname: '/cards', params: { ids: cards.join(','), title: '북마크 질문' } })}
           />
+        </Section>
+      )}
+
+      {algoPatterns.length > 0 && (
+        <Section title="알고리즘 유형" count={algoPatterns.length}>
+          {algoPatterns.map((id, i) => (
+            <View key={id}>
+              {i > 0 && <Divider />}
+              <ListRow
+                title={ALGO_PATTERN_MAP[id].title}
+                subtitle={ALGO_TOPIC_MAP[ALGO_PATTERN_MAP[id].topicId]?.title}
+                left={<IconBadge name="code-slash" color={c.algo} background={c.algoSoft} size={32} />}
+                onPress={() => router.push(`/algorithm/pattern/${id}`)}
+              />
+            </View>
+          ))}
         </Section>
       )}
 

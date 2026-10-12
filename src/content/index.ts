@@ -4,6 +4,7 @@
  * 전체 콘텐츠는 비공개 저장소, 공개 저장소에는 src/content/sample/ 만 있다.
  */
 import { ALGO_TOPICS } from './algorithm/topics';
+import { PATTERNS } from './data/algorithm/patterns';
 import { PROBLEMS } from './data/algorithm/problems';
 import bfsDfs from './data/algorithm/quiz/bfs-dfs';
 import binarySearch from './data/algorithm/quiz/binary-search';
@@ -13,6 +14,7 @@ import dp from './data/algorithm/quiz/dp';
 import greedy from './data/algorithm/quiz/greedy';
 import hash from './data/algorithm/quiz/hash';
 import heap from './data/algorithm/quiz/heap';
+import implementation from './data/algorithm/quiz/implementation';
 import shortestPath from './data/algorithm/quiz/shortest-path';
 import sorting from './data/algorithm/quiz/sorting';
 import stackQueue from './data/algorithm/quiz/stack-queue';
@@ -41,6 +43,7 @@ import reviewSpring from './data/review/spring';
 import reviewSpringKotlin from './data/review/spring-kotlin';
 import { REVIEW_FRAMEWORK_MAP } from './review/frameworks';
 import type {
+  AlgoPattern,
   AlgoProblem,
   AlgoTopicContent,
   CodeLanguage,
@@ -52,6 +55,7 @@ import type {
   ReviewFrameworkContent,
   ReviewPattern,
   ReviewVariantContent,
+  SolveLanguage,
 } from './types';
 
 export * from './types';
@@ -66,6 +70,7 @@ export {
 
 export const ALGO_QUIZ: Record<string, AlgoTopicContent> = {
   complexity,
+  implementation,
   sorting,
   'binary-search': binarySearch,
   'stack-queue': stackQueue,
@@ -161,6 +166,17 @@ const LEVEL_ORDER = (a: AlgoProblem, b: AlgoProblem) => a.level - b.level || a.t
 
 export const ALL_PROBLEMS: AlgoProblem[] = [...PROBLEMS].sort(LEVEL_ORDER);
 
+/** 코딩 테스트 언어 (알고리즘 구현 예제의 언어 전환 순서) */
+export const SOLVE_LANGUAGE_IDS: SolveLanguage[] = ['python', 'java', 'kotlin', 'cpp', 'javascript'];
+
+/** 토픽별 문제 유형 (토픽 안의 order 순) */
+export const ALGO_PATTERNS: Record<string, AlgoPattern[]> = Object.fromEntries(
+  ALGO_TOPICS.map((t) => [t.id, PATTERNS.filter((p) => p.topicId === t.id).sort((a, b) => a.order - b.order)]),
+);
+/** 모든 문제 유형 (토픽 순 → 토픽 안의 order 순) */
+export const ALL_ALGO_PATTERNS: AlgoPattern[] = ALGO_TOPICS.flatMap((t) => ALGO_PATTERNS[t.id]);
+export const ALGO_PATTERN_MAP: Record<string, AlgoPattern> = Object.fromEntries(ALL_ALGO_PATTERNS.map((p) => [p.id, p]));
+
 /* ------------------------------------------------------------------ */
 /* 조회용 인덱스                                                        */
 /* ------------------------------------------------------------------ */
@@ -201,6 +217,7 @@ export const ALL_CARD_IDS = Object.keys(CARD_MAP);
 export const CONTENT_STATS = {
   algoQuestions: ALGO_TOPICS.reduce((n, t) => n + (ALGO_QUIZ[t.id]?.questions.length ?? 0), 0),
   problems: ALL_PROBLEMS.length,
+  algoPatterns: ALL_ALGO_PATTERNS.length,
   csQuestions: CS_CATEGORIES.reduce((n, c) => n + (CS_CONTENT[c.id]?.quiz.length ?? 0), 0),
   cards: ALL_CARD_IDS.length,
   patterns: Object.keys(PATTERN_MAP).length,

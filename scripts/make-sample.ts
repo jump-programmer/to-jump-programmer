@@ -2,7 +2,8 @@
  * 전체 콘텐츠(src/content/data, full)에서 공개 저장소용 샘플(src/content/sample)을 만든다.
  *   npm run content:sync && npm run content:sample
  *
- * 샘플 범위: 알고리즘 토픽마다 개념 첫 단락 + 퀴즈 2문항, CS 카테고리마다 퀴즈 2문항 + 카드 1장,
+ * 샘플 범위: 알고리즘 토픽마다 개념 첫 단락 + 퀴즈 2문항, 대표 토픽(SAMPLE_PATTERN_TOPICS)의 문제 유형 전체,
+ * CS 카테고리마다 퀴즈 2문항 + 카드 1장,
  * 프레임워크마다 개선 패턴 2개 + 리뷰 퀴즈 1개(다른 언어 버전 포함), 코딩 문제는 난이도별 1개.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -13,6 +14,7 @@ import { ALGO_TOPICS } from '../src/content/algorithm/topics';
 import { CS_CATEGORIES } from '../src/content/cs/categories';
 import { REVIEW_FRAMEWORKS } from '../src/content/review/frameworks';
 import type {
+  AlgoPattern,
   AlgoProblem,
   AlgoTopicContent,
   CsCategoryContent,
@@ -23,6 +25,9 @@ import type {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'src', 'content', 'data');
 const SAMPLE = join(ROOT, 'src', 'content', 'sample');
+
+/** 문제 유형 · 구현 예제를 샘플에 싣는 대표 토픽 */
+const SAMPLE_PATTERN_TOPICS = ['binary-search', 'bfs-dfs'];
 
 const HEADER = '// 공개 저장소용 샘플 콘텐츠 — `npm run content:sample` 로 생성. 전체 콘텐츠는 비공개 저장소에 있습니다.';
 
@@ -78,12 +83,27 @@ async function main() {
   }
   rmSync(SAMPLE, { recursive: true, force: true });
 
+  const sampleQuizIds = new Set<string>();
   for (const topic of ALGO_TOPICS) {
     const c = await load<AlgoTopicContent>(join(DATA, 'algorithm', 'quiz', `${topic.id}.ts`));
+    const questions = c.questions.slice(0, 2);
+    questions.forEach((q) => sampleQuizIds.add(q.id));
     writeModule(join(SAMPLE, 'algorithm', 'quiz', `${topic.id}.ts`), 'AlgoTopicContent', {
       primer: firstSection(c.primer),
-      questions: c.questions.slice(0, 2),
+      questions,
     });
+  }
+
+  const patternDir = join(DATA, 'algorithm', 'patterns');
+  let patternCount = 0;
+  mkdirSync(join(SAMPLE, 'algorithm', 'patterns'), { recursive: true });
+  for (const f of readdirSync(patternDir).filter((x) => x.endsWith('.ts') && x !== 'index.ts').sort()) {
+    const p = await load<AlgoPattern>(join(patternDir, f));
+    if (!SAMPLE_PATTERN_TOPICS.includes(p.topicId)) continue;
+    // 샘플에 없는 퀴즈는 연결하지 않는다
+    const quizIds = p.quizIds?.filter((id) => sampleQuizIds.has(id));
+    writeModule(join(SAMPLE, 'algorithm', 'patterns', f), 'AlgoPattern', { ...p, quizIds: quizIds?.length ? quizIds : undefined });
+    patternCount++;
   }
 
   for (const cat of CS_CATEGORIES) {
@@ -123,7 +143,7 @@ async function main() {
   }
 
   console.log(
-    `✓ 샘플 생성: 알고리즘 토픽 ${ALGO_TOPICS.length} · CS ${CS_CATEGORIES.length} · 리뷰 ${REVIEW_FRAMEWORKS.length} · 코딩 문제 ${picked.size}개 (${[...picked.values()].map((p) => p.id).join(', ')})`,
+    `✓ 샘플 생성: 알고리즘 토픽 ${ALGO_TOPICS.length} · 문제 유형 ${patternCount} · CS ${CS_CATEGORIES.length} · 리뷰 ${REVIEW_FRAMEWORKS.length} · 코딩 문제 ${picked.size}개 (${[...picked.values()].map((p) => p.id).join(', ')})`,
   );
 }
 
