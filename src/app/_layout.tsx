@@ -9,7 +9,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useHydrated } from '@/features/progress/use-hydrated';
 import { initPwa } from '@/features/pwa/install';
-import { RunnerHost } from '@/features/runner/runner-host';
 import { AppThemeProvider, useTheme } from '@/theme/theme-provider';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -61,7 +60,6 @@ function RootStack() {
       <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
       <Stack.Screen name="quiz" options={{ headerShown: false, presentation: 'fullScreenModal', gestureEnabled: false }} />
       <Stack.Screen name="cards" options={{ headerShown: false, presentation: 'fullScreenModal', gestureEnabled: false }} />
-      <Stack.Screen name="algorithm/solve/[id]" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
   );
 }
@@ -80,7 +78,6 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AppThemeProvider>
           <NavigationTheme>
-            <RunnerHost />
             <RootStack />
           </NavigationTheme>
         </AppThemeProvider>

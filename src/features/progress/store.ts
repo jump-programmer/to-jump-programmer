@@ -21,9 +21,6 @@ export interface Profile {
 
 export interface Settings {
   theme: ThemePreference;
-  /** Piston 호환 원격 실행 서버 주소 (Java/Kotlin/C++ 실행용) */
-  runnerUrl: string;
-  editorFontSize: number;
   haptics: boolean;
   /** 코드 리뷰에서 마지막으로 고른 코드 언어 (예: spring → kotlin). 없으면 풀이 언어를 따른다 */
   reviewLanguage: Partial<Record<FrameworkId, CodeLanguage>>;
@@ -43,6 +40,7 @@ export interface CardRecord {
   lastAt: number;
 }
 
+/** 이전 버전의 코딩 문제 풀이 기록 — 풀이 기능은 없어졌지만 기존 기록은 지우지 않고 보존한다 */
 export interface ProblemRecord {
   solved: boolean;
   /** 최고 통과 테스트 수 / 전체 */
@@ -82,6 +80,7 @@ export interface ProgressData {
   settings: Settings;
   quiz: Record<string, QuizRecord>;
   cards: Record<string, CardRecord>;
+  /** 이전 버전의 코딩 문제 풀이 기록 (보존만 하고 화면에서 쓰지 않음) */
   problems: Record<string, ProblemRecord>;
   /** 코드 리뷰 개선 패턴 id → 학습 완료 시각 */
   patterns: Record<string, number>;
@@ -101,7 +100,6 @@ interface ProgressActions {
   updateSettings: (patch: Partial<Settings>) => void;
   recordQuiz: (id: string, correct: boolean) => void;
   rateCard: (id: string, rating: CardRating) => void;
-  recordSubmission: (id: string, result: { passed: number; total: number; language: SolveLanguage }) => void;
   markPatternRead: (id: string) => void;
   markAlgoPatternRead: (id: string) => void;
   recordChallenge: (id: string, score: number, note?: string) => void;
@@ -125,8 +123,6 @@ const DEFAULT_PROFILE: Profile = {
 
 const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
-  runnerUrl: process.env.EXPO_PUBLIC_RUNNER_URL ?? '',
-  editorFontSize: 14,
   haptics: true,
   reviewLanguage: {},
 };
@@ -184,27 +180,6 @@ export const useProgress = create<ProgressState>()(
           },
           activity: bumpActivity(s.activity),
         })),
-
-      recordSubmission: (id, { passed, total, language }) =>
-        set((s) => {
-          const prev = s.problems[id];
-          const solved = passed === total && total > 0;
-          return {
-            problems: {
-              ...s.problems,
-              [id]: {
-                solved: (prev?.solved ?? false) || solved,
-                bestPassed: Math.max(prev?.bestPassed ?? 0, passed),
-                total,
-                submissions: (prev?.submissions ?? 0) + 1,
-                language: solved ? language : (prev?.language ?? language),
-                solvedAt: prev?.solvedAt ?? (solved ? Date.now() : undefined),
-                lastAt: Date.now(),
-              },
-            },
-            activity: bumpActivity(s.activity),
-          };
-        }),
 
       markPatternRead: (id) =>
         set((s) =>
@@ -296,44 +271,3 @@ export const useProgress = create<ProgressState>()(
 export function useTodayCount(): number {
   return useProgress((s) => s.activity[dayKey()] ?? 0);
 }
-
-/* ------------------------------------------------------------------ */
-/* 코드 초안 (문제·언어별) — 자주 바뀌므로 별도 저장소                  */
-/* ------------------------------------------------------------------ */
-
-interface DraftState {
-  drafts: Record<string, string>;
-  /** 문제별 마지막으로 사용한 언어 */
-  lastLanguage: Record<string, SolveLanguage>;
-  setDraft: (problemId: string, lang: SolveLanguage, code: string) => void;
-  clearDraft: (problemId: string, lang: SolveLanguage) => void;
-  setLastLanguage: (problemId: string, lang: SolveLanguage) => void;
-}
-
-export const draftKey = (problemId: string, lang: SolveLanguage) => `${problemId}:${lang}`;
-
-export const useDrafts = create<DraftState>()(
-  persist(
-    (set) => ({
-      drafts: {},
-      lastLanguage: {},
-      setLastLanguage: (problemId, lang) => set((s) => ({ lastLanguage: { ...s.lastLanguage, [problemId]: lang } })),
-      setDraft: (problemId, lang, code) =>
-        set((s) => ({ drafts: { ...s.drafts, [draftKey(problemId, lang)]: code } })),
-      clearDraft: (problemId, lang) =>
-        set((s) => {
-          const next = { ...s.drafts };
-          delete next[draftKey(problemId, lang)];
-          return { drafts: next };
-        }),
-    }),
-    {
-      name: 'tj-drafts',
-      version: 1,
-      storage: createJSONStorage(() => AsyncStorage),
-      onRehydrateStorage: () => (_state, error) => {
-        if (error) void AsyncStorage.removeItem('tj-drafts').catch(() => {});
-      },
-    },
-  ),
-);

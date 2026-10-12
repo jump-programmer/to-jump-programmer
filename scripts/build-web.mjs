@@ -17,7 +17,6 @@
  *   TJ_WEB_ORIGIN                   사이트 주소 (예: https://jumpprogrammer.app) — 있으면 sitemap.xml · 링크 미리보기 태그를 만든다
  *   EXPO_PUBLIC_ADSENSE_CLIENT      AdSense 게시자 ID (ca-pub-…) — 없으면 광고 코드를 넣지 않는다
  *   EXPO_PUBLIC_ADSENSE_SLOT        AdSense 디스플레이 광고 단위 ID (숫자)
- *   EXPO_PUBLIC_RUNNER_URL          Java · Kotlin · C++ 실행 서버 기본 주소
  */
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -72,7 +71,7 @@ function headTags() {
     '<meta name="apple-mobile-web-app-status-bar-style" content="default">',
     `<meta property="og:title" content="${APP.web?.name ?? APP.name}">`,
     `<meta property="og:description" content="${DESCRIPTION}">`,
-    // iOS Safari 는 16px 보다 작은 입력 칸(코드 에디터)을 누르면 화면을 확대하므로 iOS 에서만 자동 확대를 막는다
+    // iOS Safari 는 16px 보다 작은 입력 칸을 누르면 화면을 확대하므로 iOS 에서만 자동 확대를 막는다
     '<script>(function(){var u=navigator.userAgent;if(!/Android/i.test(u)&&(/iP(hone|ad|od)/.test(u)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))){var m=document.querySelector("meta[name=viewport]");if(m)m.setAttribute("content",m.getAttribute("content")+", maximum-scale=1")}})()</script>',
     `<script>if("serviceWorker"in navigator)addEventListener("load",function(){navigator.serviceWorker.register("${PREFIX}sw.js",{scope:"${PREFIX}"}).catch(function(){})})</script>`,
   ];
@@ -163,18 +162,6 @@ async function writeServiceWorker() {
     skipWaiting: true,
     clientsClaim: true,
     cleanupOutdatedCaches: true,
-    runtimeCaching: [
-      {
-        // Python 실행 환경(Pyodide)은 처음 실행할 때 CDN 에서 받으므로, 한 번 받은 뒤에는 캐시에서 쓴다
-        urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/pyodide\//,
-        handler: 'CacheFirst',
-        options: {
-          cacheName: 'pyodide',
-          expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 365 },
-          cacheableResponse: { statuses: [0, 200] },
-        },
-      },
-    ],
   });
   for (const w of warnings) console.warn(`  ! ${w}`);
   console.log(`✓ 서비스 워커: 미리 캐시할 파일 ${count}개 (${(size / 1024 / 1024).toFixed(1)}MB)`);

@@ -1,6 +1,6 @@
-// 코딩 문제 · 알고리즘 유형 폴더의 index.ts 를 자동 생성한다. (파일 1개 = 문제/유형 1개)
-//   node scripts/gen-problem-index.mjs              src/content/data/algorithm 의 problems, patterns
-//   node scripts/gen-problem-index.mjs <algorithm 폴더>
+// 알고리즘 유형 폴더(algorithm/patterns)의 index.ts 를 자동 생성한다. (파일 1개 = 유형 1개)
+//   node scripts/gen-content-index.mjs              src/content/data/algorithm/patterns
+//   node scripts/gen-content-index.mjs <폴더>
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,11 +36,9 @@ function writeIndex(dir, typeName, exportName, prefix) {
   return files.length;
 }
 
-export const writeProblemIndex = (dir) => writeIndex(dir, 'AlgoProblem', 'PROBLEMS', 'p_');
 export const writePatternIndex = (dir) => writeIndex(dir, 'AlgoPattern', 'PATTERNS', 'pt_');
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const dir = resolve(process.argv[2] ?? join(root, 'src', 'content', 'data', 'algorithm'));
-  console.log(`problems/index.ts: ${writeProblemIndex(join(dir, 'problems'))}개 문제`);
-  console.log(`patterns/index.ts: ${writePatternIndex(join(dir, 'patterns'))}개 유형`);
+  const dir = resolve(process.argv[2] ?? join(root, 'src', 'content', 'data', 'algorithm', 'patterns'));
+  console.log(`patterns/index.ts: ${writePatternIndex(dir)}개 유형`);
 }

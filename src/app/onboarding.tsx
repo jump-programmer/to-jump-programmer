@@ -8,17 +8,17 @@ import { Button } from '@/components/ui/button';
 import { IconBadge } from '@/components/ui/misc';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
-import { REVIEW_FRAMEWORKS, type FrameworkId, type SolveLanguage } from '@/content';
+import { REVIEW_FRAMEWORKS, SOLVE_LANGUAGE_IDS, type FrameworkId, type SolveLanguage } from '@/content';
 import { useProgress, type CareerGoal } from '@/features/progress/store';
-import { SOLVE_LANGUAGES } from '@/features/runner/core/languages';
 import { haptic } from '@/lib/haptics';
+import { LANGUAGE_LABEL } from '@/lib/highlight';
 import { useColors } from '@/theme/theme-provider';
 import { MAX_CONTENT_WIDTH, radius, spacing } from '@/theme/tokens';
 
 const STEPS = 4;
 
 const FEATURES = [
-  { icon: 'code-slash', title: '알고리즘 · 코딩 테스트', desc: '개념 퀴즈로 익히고 Python·Java·Kotlin·C++·JS로 직접 풀어요', tone: 'algo' },
+  { icon: 'code-slash', title: '알고리즘 · 코딩 테스트', desc: '이론과 자주 나오는 유형을 Python·Java·Kotlin·C++·JS 예제로 익혀요', tone: 'algo' },
   { icon: 'git-pull-request', title: '코드 리뷰 테스트', desc: 'Spring·NestJS·Django 코드의 문제를 찾고 개선해요', tone: 'review' },
   { icon: 'school', title: '기술 면접 CS', desc: 'OS·네트워크·DB부터 아키텍처까지 퀴즈와 질문 카드로', tone: 'cs' },
 ] as const;
@@ -198,18 +198,18 @@ export default function Onboarding() {
                 <View style={{ gap: spacing.sm }}>
                   <Text variant="title1">코딩 테스트 언어를{'\n'}골라주세요</Text>
                   <Text variant="callout" color="textTertiary">
-                    문제를 풀 때 기본 언어로 사용해요. 언제든 바꿀 수 있어요.
+                    알고리즘 구현 예제를 이 언어로 먼저 보여드려요. 언제든 바꿀 수 있어요.
                   </Text>
                 </View>
                 <View style={{ gap: spacing.md }}>
-                  {SOLVE_LANGUAGES.map((l) => (
+                  {SOLVE_LANGUAGE_IDS.map((l) => (
                     <OptionCard
-                      key={l.id}
-                      selected={language === l.id}
-                      onPress={() => setLanguage(l.id)}
-                      title={l.label}
-                      description={l.local ? `${LANGUAGE_DESC[l.id]} · 기기에서 바로 채점` : `${LANGUAGE_DESC[l.id]} · 채점은 실행 서버 연결 시`}
-                      icon={LANGUAGE_ICON[l.id]}
+                      key={l}
+                      selected={language === l}
+                      onPress={() => setLanguage(l)}
+                      title={LANGUAGE_LABEL[l]}
+                      description={LANGUAGE_DESC[l]}
+                      icon={LANGUAGE_ICON[l]}
                     />
                   ))}
                 </View>

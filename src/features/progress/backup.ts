@@ -9,6 +9,7 @@ import type { ProgressData } from './store';
 export const BACKUP_APP = 'to-jump-programmer';
 export const BACKUP_FORMAT = 1;
 
+/** 이전 버전 백업의 작성 중인 코드 (코드 풀이 기능이 없어져 복원하지 않는다) */
 export interface DraftsData {
   drafts: Record<string, string>;
   lastLanguage: Record<string, string>;
@@ -19,6 +20,7 @@ export interface BackupFile {
   format: number;
   exportedAt: string;
   progress: Partial<ProgressData>;
+  /** 이전 버전 백업에만 있음 */
   drafts?: DraftsData;
 }
 
@@ -30,14 +32,13 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-export function createBackup(progress: ProgressData, drafts: DraftsData, now = new Date()): BackupFile {
+export function createBackup(progress: ProgressData, now = new Date()): BackupFile {
   const { profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, bookmarks, activity, daily } = progress;
   return {
     app: BACKUP_APP,
     format: BACKUP_FORMAT,
     exportedAt: now.toISOString(),
     progress: { profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, bookmarks, activity, daily },
-    drafts: { drafts: drafts.drafts, lastLanguage: drafts.lastLanguage },
   };
 }
 

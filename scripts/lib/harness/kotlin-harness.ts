@@ -1,24 +1,24 @@
 /**
- * Kotlin 채점 하네스 생성기.
+ * Kotlin 검증 하네스 생성기 — npm run validate 가 콘텐츠 예제 코드(class Solution)를 테스트 입력으로 실행할 때 쓴다.
  *
- * Piston 의 kotlin 패키지(1.8.20, JDK 8)는 보낸 파일 이름에 .kt 를 붙여 `kotlinc *.kt -include-runtime -d code.jar`
- * 로 컴파일하고 `java -jar code.jar` 로 실행한다. jar 의 진입점은 최상위 main 함수 하나로 정해진다.
- *   [import 문] → [object TjHarness { 하네스 } + fun main()] → [사용자 코드(import·package 줄은 빈 줄로 대체)]
- * 사용자 코드의 줄 번호를 보존해 에러 메시지의 줄 번호를 되돌려 계산한다.
+ * `kotlinc Main.kt -include-runtime -d code.jar` 로 컴파일하고 `java -jar code.jar` 로 실행한다.
+ * jar 의 진입점은 최상위 main 함수 하나로 정해진다.
+ *   [import 문] → [object TjHarness { 하네스 } + fun main()] → [예제 코드(import·package 줄은 빈 줄로 대체)]
+ * 예제 코드의 줄 번호를 보존해 에러 메시지의 줄 번호를 되돌려 계산한다.
  *
- * Piston 과 같은 Kotlin 1.8 · JDK 8 에서 동작해야 하므로 하네스 코드는 그 범위의 문법·API 만 쓴다.
+ * 예제 코드를 코딩 테스트 사이트의 오래된 컴파일러(Kotlin 1.8 · JDK 8)로도 검증할 수 있게 하네스 코드는 그 범위의 문법·API 만 쓴다.
  * (생성 코드에 `$` 를 쓰지 않는다 — Kotlin 문자열 템플릿과 섞이지 않게)
  */
-import type { Signature, TestCase, ValueType } from '@/content/types';
+import type { Signature, TestCase, ValueType } from '../../../src/content/types';
 
 import type { GeneratedProgram } from './java-harness';
-import { KOTLIN_TYPE } from './languages';
+import { KOTLIN_TYPE } from './value-types';
 import { MARK_BEGIN, MARK_END } from './protocol';
 
 const IMPORT_LINE = /^\s*((import\s+[\w.]+(\.\*)?(\s+as\s+\w+)?\s*;?\s*)+)(\/\/.*|\/\*.*\*\/\s*)?$/;
 const PACKAGE_LINE = /^\s*package\s+[\w.]+\s*;?\s*$/;
 
-/** Piston 에 보내는 파일 이름 (Piston 이 .kt 를 붙인다) */
+/** 생성 파일 이름 (확장자 .kt 를 붙여 저장한다) */
 export const KOTLIN_FILE_NAME = 'Main';
 
 function kotlinString(s: string): string {

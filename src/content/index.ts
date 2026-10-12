@@ -5,7 +5,6 @@
  */
 import { ALGO_TOPICS } from './algorithm/topics';
 import { PATTERNS } from './data/algorithm/patterns';
-import { PROBLEMS } from './data/algorithm/problems';
 import bfsDfs from './data/algorithm/quiz/bfs-dfs';
 import binarySearch from './data/algorithm/quiz/binary-search';
 import bruteForce from './data/algorithm/quiz/brute-force';
@@ -44,7 +43,6 @@ import reviewSpringKotlin from './data/review/spring-kotlin';
 import { REVIEW_FRAMEWORK_MAP } from './review/frameworks';
 import type {
   AlgoPattern,
-  AlgoProblem,
   AlgoTopicContent,
   CodeLanguage,
   CsCategoryContent,
@@ -59,7 +57,7 @@ import type {
 } from './types';
 
 export * from './types';
-export { ALGO_TOPICS, ALGO_TOPIC_MAP, EXTRA_PROBLEM_TAGS, topicLabel } from './algorithm/topics';
+export { ALGO_TOPICS, ALGO_TOPIC_MAP } from './algorithm/topics';
 export { CS_CATEGORIES, CS_CATEGORY_MAP, CS_GROUPS, FRAMEWORK_LANGUAGE_CATEGORIES } from './cs/categories';
 export {
   REVIEW_CATEGORY_LABEL,
@@ -162,10 +160,6 @@ export function resolveChallenge(ch: ReviewChallenge, language?: CodeLanguage): 
   };
 }
 
-const LEVEL_ORDER = (a: AlgoProblem, b: AlgoProblem) => a.level - b.level || a.title.localeCompare(b.title, 'ko');
-
-export const ALL_PROBLEMS: AlgoProblem[] = [...PROBLEMS].sort(LEVEL_ORDER);
-
 /** 코딩 테스트 언어 (알고리즘 구현 예제의 언어 전환 순서) */
 export const SOLVE_LANGUAGE_IDS: SolveLanguage[] = ['python', 'java', 'kotlin', 'cpp', 'javascript'];
 
@@ -202,8 +196,6 @@ for (const cat of CS_CATEGORIES) {
   for (const card of content?.cards ?? []) CARD_MAP[card.id] = card;
 }
 
-export const PROBLEM_MAP: Record<string, AlgoProblem> = Object.fromEntries(ALL_PROBLEMS.map((p) => [p.id, p]));
-
 export const PATTERN_MAP: Record<string, ReviewPattern> = {};
 export const CHALLENGE_MAP: Record<string, ReviewChallenge> = {};
 for (const fw of Object.values(REVIEW_CONTENT)) {
@@ -216,7 +208,6 @@ export const ALL_CARD_IDS = Object.keys(CARD_MAP);
 
 export const CONTENT_STATS = {
   algoQuestions: ALGO_TOPICS.reduce((n, t) => n + (ALGO_QUIZ[t.id]?.questions.length ?? 0), 0),
-  problems: ALL_PROBLEMS.length,
   algoPatterns: ALL_ALGO_PATTERNS.length,
   csQuestions: CS_CATEGORIES.reduce((n, c) => n + (CS_CONTENT[c.id]?.quiz.length ?? 0), 0),
   cards: ALL_CARD_IDS.length,

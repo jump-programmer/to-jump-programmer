@@ -1,16 +1,16 @@
 /**
  * 콘텐츠 검증 스크립트
  *
- *   npx tsx scripts/validate-content.ts                 # 전체 검증 + 모범 답안 실행
+ *   npx tsx scripts/validate-content.ts                 # 전체 검증 + 알고리즘 구현 예제 실행
  *   npx tsx scripts/validate-content.ts --quick         # 구조 검증만
- *   npx tsx scripts/validate-content.ts --section problems --only two-sum,merge-intervals --langs python,java
+ *   npx tsx scripts/validate-content.ts --section patterns --only two-pointer --langs python,java
  *   npx tsx scripts/validate-content.ts --section cs --only os,network
  *   npx tsx scripts/validate-content.ts --section patterns --only binary-search   # 토픽 id 또는 유형 id
  *
- * --section: cs | review | algo-quiz | patterns | problems (쉼표로 여러 개)
+ * --section: cs | review | algo-quiz | patterns (쉼표로 여러 개)
  * --langs: python | javascript | java | kotlin | cpp (기본: 전부)
  *
- * Kotlin 은 KOTLINC(컴파일러 경로)와 KOTLIN_JAVA_HOME(컴파일·실행 JDK)로 Piston 과 같은 조합을 지정할 수 있다.
+ * Kotlin 은 KOTLINC(컴파일러 경로)와 KOTLIN_JAVA_HOME(컴파일·실행 JDK)로 다른 버전 조합(예: 1.8 · JDK 8)을 지정할 수 있다.
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -19,12 +19,11 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import vm from 'node:vm';
 
-import { ALGO_TOPICS, EXTRA_PROBLEM_TAGS } from '../src/content/algorithm/topics';
+import { ALGO_TOPICS } from '../src/content/algorithm/topics';
 import { CS_CATEGORIES } from '../src/content/cs/categories';
 import { REVIEW_FRAMEWORKS } from '../src/content/review/frameworks';
 import type {
   AlgoPattern,
-  AlgoProblem,
   AlgoTopicContent,
   CodeSnippet,
   CompareMode,
@@ -39,11 +38,11 @@ import type {
   TestCase,
   ValueType,
 } from '../src/content/types';
-import { formatValue, resultsMatch } from '../src/features/runner/core/compare';
-import { buildCppProgram, mapCppErrors } from '../src/features/runner/core/cpp-harness';
-import { buildJavaProgram, mapJavaErrors } from '../src/features/runner/core/java-harness';
-import { buildKotlinProgram, mapKotlinErrors } from '../src/features/runner/core/kotlin-harness';
-import { parseHarnessOutput } from '../src/features/runner/core/protocol';
+import { formatValue, resultsMatch } from './lib/harness/compare';
+import { buildCppProgram, mapCppErrors } from './lib/harness/cpp-harness';
+import { buildJavaProgram, mapJavaErrors } from './lib/harness/java-harness';
+import { buildKotlinProgram, mapKotlinErrors } from './lib/harness/kotlin-harness';
+import { parseHarnessOutput } from './lib/harness/protocol';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // 학습 데이터 (npm run content:sync 로 채워진 전체 또는 샘플 콘텐츠). TJ_CONTENT_DATA 로 비공개 콘텐츠 폴더를 직접 지정할 수 있다
@@ -63,7 +62,7 @@ function option(name: string): string | undefined {
 }
 const QUICK = flag('quick');
 const ONLY = option('only')?.split(',').filter(Boolean);
-const SECTIONS = new Set((option('section') ?? 'cs,review,algo-quiz,patterns,problems').split(','));
+const SECTIONS = new Set((option('section') ?? 'cs,review,algo-quiz,patterns').split(','));
 const ALL_LANGS: SolveLanguage[] = ['python', 'javascript', 'java', 'kotlin', 'cpp'];
 const LANGS = (option('langs')?.split(',') ?? ALL_LANGS) as SolveLanguage[];
 
@@ -527,7 +526,7 @@ function matchesType(v: unknown, t: ValueType): boolean {
   }
 }
 
-/** 시그니처와 테스트 입출력 형식 검사 (코딩 문제 · 알고리즘 유형 예제 공용) */
+/** 예제 문제의 시그니처와 테스트 입출력 형식 검사 */
 function checkSignatureAndCases(
   w: string,
   sig: Signature | undefined,
@@ -616,29 +615,6 @@ function checkSolutionCode(w: string, code: Record<SolveLanguage, string> | unde
     err(w, `${field}.cpp 는 solution(...) 함수가 있어야 합니다`);
     ok = false;
   }
-  return ok;
-}
-
-function checkProblemStructure(p: AlgoProblem, file: string): boolean {
-  const w = `problem/${p?.id}`;
-  checkId(p.id, w);
-  if (`${p.id}.ts` !== file) err(w, `파일명(${file})과 id 가 다릅니다`);
-  nonEmpty(p.title, w, 'title', 2);
-  if (![1, 2, 3].includes(p.level)) err(w, 'level 은 1|2|3');
-  const topicIds = new Set([...ALGO_TOPICS.map((t) => t.id), ...Object.keys(EXTRA_PROBLEM_TAGS)]);
-  if (!Array.isArray(p.topics) || p.topics.length === 0) err(w, 'topics 가 비어있습니다');
-  p.topics?.forEach((t) => !topicIds.has(t) && err(w, `알 수 없는 topic: ${t}`));
-  checkRich(p.description, w, 'description', 40);
-  if (!Array.isArray(p.constraints) || p.constraints.length === 0) err(w, 'constraints 가 비어있습니다');
-  p.constraints?.forEach((c, i) => checkInline(c, w, `constraints[${i}]`));
-  if (p.exampleNotes) checkRich(p.exampleNotes, w, 'exampleNotes');
-  if (!Array.isArray(p.hints) || p.hints.length === 0) err(w, 'hints 가 비어있습니다');
-  checkRich(p.explanation, w, 'explanation', 80);
-  nonEmpty(p.complexity?.time, w, 'complexity.time');
-  nonEmpty(p.complexity?.space, w, 'complexity.space');
-
-  let ok = checkSignatureAndCases(w, p.signature, p.examples, p.tests, p.compare, { examples: 1, tests: 5 });
-  if (!checkSolutionCode(w, p.solutions, 'solutions')) ok = false;
   return ok;
 }
 
@@ -768,7 +744,7 @@ function collectHarness(r: ExecOutput, n: number): LangRun {
 }
 
 interface RunTarget {
-  /** 리포트 위치 (예: problem/two-sum, pattern/binary-search-lower-bound#1) */
+  /** 리포트 위치 (예: pattern/binary-search-lower-bound#1) */
   where: string;
   code: Record<SolveLanguage, string>;
   signature: Signature;
@@ -827,35 +803,6 @@ async function runAll(targets: RunTarget[]) {
     while (queue.length) await runTarget(queue.shift()!);
   });
   await Promise.all(workers);
-}
-
-async function validateProblems() {
-  const dir = join(CONTENT, 'algorithm', 'problems');
-  const files = readdirSync(dir)
-    .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
-    .filter((f) => !ONLY || ONLY.some((o) => f.replace(/\.ts$/, '') === o || f.includes(o)))
-    .sort();
-  const problems: AlgoProblem[] = [];
-  for (const f of files) {
-    const p = await importDefault<AlgoProblem>(join(dir, f));
-    if (!p) {
-      err(`problem/${f}`, 'default export 가 없습니다');
-      continue;
-    }
-    if (checkProblemStructure(p, f)) problems.push(p);
-  }
-  console.log(`  problems: ${files.length}개 (구조 검증 통과 ${problems.length}개)`);
-  if (QUICK || !checkKotlinc('problems')) return;
-  await runAll(
-    problems.map((p) => ({
-      where: `problem/${p.id}`,
-      code: p.solutions,
-      signature: p.signature,
-      examples: p.examples,
-      tests: p.tests,
-      compare: p.compare,
-    })),
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -980,7 +927,6 @@ async function main() {
   if (SECTIONS.has('algo-quiz')) await validateAlgoQuiz();
   if (SECTIONS.has('review')) await validateReview();
   if (SECTIONS.has('patterns')) await validateAlgoPatterns();
-  if (SECTIONS.has('problems')) await validateProblems();
   reportAnswerSkew();
 
   console.log('');

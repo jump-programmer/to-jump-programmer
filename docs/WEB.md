@@ -13,10 +13,10 @@
 | --- | --- |
 | 빌드 | `npm run build:web` → `scripts/build-web.mjs` (expo export → PWA 태그 · manifest · 서비스 워커 · 페이지별 index.html · sitemap · robots.txt · ads.txt) |
 | 주소 처리 | `not_found_handling: single-page-application` — 없는 경로로 들어와도 앱(index.html)을 200 으로 내려 주고, 화면 이동은 Expo Router 가 처리 |
-| 오프라인 | Workbox 서비스 워커가 앱 파일(약 5.6MB)을 미리 저장. Python 실행 환경(Pyodide)은 처음 실행할 때 받아 캐시 |
+| 오프라인 | Workbox 서비스 워커가 앱 파일(콘텐츠 포함)을 미리 저장해 오프라인에서도 모든 화면이 열림 |
 | 설치 | Android Chrome · PC Chrome/Edge: [앱 설치] 버튼, iPhone: Safari 공유 → 홈 화면에 추가 (홈 화면 · 설정에서 안내) |
 | 학습 기록 | 브라우저 저장소(localStorage). [마이 › 설정 › 백업 내보내기/복원]으로 JSON 백업 |
-| 광고 | 화면 콘텐츠 사이의 AdSense 디스플레이 광고(`AdSlot`) — 탭 화면, 개선 패턴 · 토픽 · 면접 카테고리, 학습 결과 화면 |
+| 광고 | 화면 콘텐츠 사이의 AdSense 디스플레이 광고(`AdSlot`) — 탭 화면, 개선 패턴 · 알고리즘 토픽 · 유형 · 면접 카테고리, 학습 결과 화면 |
 | 루트 파일 | `robots.txt`(sitemap 주소), `ads.txt` · `app-ads.txt`(AdSense · AdMob 판매자 인증)를 빌드가 만든다 |
 
 ## 2. 로컬에서 확인
@@ -71,19 +71,18 @@ npm run preview:web
 광고 배치 원칙 (AdSense 정책):
 - 메뉴 · 버튼 같은 누를 수 있는 요소 바로 옆에 두지 않습니다(실수 클릭 유도 금지). 그래서 앱의 탭 바 위 고정 배너는 웹에서 쓰지 않습니다.
 - 사용자가 화면을 옮길 때만 새 광고를 요청하고, 같은 자리를 시간마다 새로고침하지 않습니다.
-- 문제를 푸는 화면(코드 에디터 · 퀴즈 진행)에는 광고를 두지 않습니다.
+- 문제를 푸는 화면(퀴즈 진행 · 카드 학습)에는 광고를 두지 않습니다.
 - 본인 광고를 직접 누르지 않습니다.
 
 ## 5. 검색 노출 (Google Search Console)
 
 - **도메인 속성** `jumpprogrammer.app` 으로 등록하고, 안내되는 TXT 레코드(`google-site-verification=…`)를 Cloudflare › DNS › Records 에 추가해 확인합니다.
-- **Sitemaps** 에 `https://jumpprogrammer.app/sitemap.xml` 을 제출합니다. (콘텐츠 화면 111개, `robots.txt` 에도 들어 있음)
+- **Sitemaps** 에 `https://jumpprogrammer.app/sitemap.xml` 을 제출합니다. (토픽 · 알고리즘 유형 · 개선 패턴 · 리뷰 퀴즈 · 면접 카테고리 화면, `robots.txt` 에도 들어 있음)
 
 ## 6. 알아 둘 점
 
 - **콘텐츠 공개**: 웹 앱은 전체 콘텐츠가 담긴 JS 파일을 누구나 내려받을 수 있습니다. (원본 · 작성 이력 · 모범 답안 검증 기준은 비공개 저장소에 그대로 둡니다)
 - **iPhone 저장 공간**: 홈 화면에 설치한 앱은 Safari 와 저장 공간이 따로입니다. Safari 에서 쌓은 기록은 백업 → 복원으로 옮깁니다. 또 Safari 는 7일 넘게 방문하지 않은 사이트의 데이터를 지울 수 있어(홈 화면 앱은 예외) 설치를 권장합니다.
 - **새 버전**: 배포하면 서비스 워커가 바로 교체되고, 앱을 다시 열 때 새 버전이 적용됩니다. 학습 기록은 캐시가 아니라 브라우저 저장소에 있어 지워지지 않습니다.
-- **Java · Kotlin · C++**: 웹에서도 실행 서버(Piston)가 있어야 채점됩니다. 저장소 변수 `RUNNER_URL` 에 HTTPS 주소를 넣으면 기본값이 됩니다(`infra/runner` 의 Caddy 설정이 브라우저 요청(CORS)을 허용합니다).
 - **카카오톡 등 앱 안의 브라우저**에서는 설치할 수 없어 다른 브라우저로 열도록 안내합니다.
 - **하위 경로 배포**: `TJ_WEB_BASE_URL=/경로` 로 빌드하면 GitHub Pages 프로젝트 사이트처럼 하위 경로에도 배포할 수 있습니다(`404.html` · 경로별 `index.html` 이 그 경우를 위한 파일).

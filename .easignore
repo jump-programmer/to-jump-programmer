@@ -49,7 +49,7 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# 환경 변수 (AdMob ID, 실행 서버 도메인 등) — 예시 파일만 커밋한다
+# 환경 변수 (AdMob ID 등) — 예시 파일만 커밋한다
 .env
 .env.*
 !.env.example

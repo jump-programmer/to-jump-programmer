@@ -4,7 +4,7 @@
  *
  * 샘플 범위: 알고리즘 토픽마다 개념 첫 단락 + 퀴즈 2문항, 대표 토픽(SAMPLE_PATTERN_TOPICS)의 문제 유형 전체,
  * CS 카테고리마다 퀴즈 2문항 + 카드 1장,
- * 프레임워크마다 개선 패턴 2개 + 리뷰 퀴즈 1개(다른 언어 버전 포함), 코딩 문제는 난이도별 1개.
+ * 프레임워크마다 개선 패턴 2개 + 리뷰 퀴즈 1개(다른 언어 버전 포함).
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -15,7 +15,6 @@ import { CS_CATEGORIES } from '../src/content/cs/categories';
 import { REVIEW_FRAMEWORKS } from '../src/content/review/frameworks';
 import type {
   AlgoPattern,
-  AlgoProblem,
   AlgoTopicContent,
   CsCategoryContent,
   ReviewFrameworkContent,
@@ -131,19 +130,8 @@ async function main() {
     }
   }
 
-  const dir = join(DATA, 'algorithm', 'problems');
-  const problems: AlgoProblem[] = [];
-  for (const f of readdirSync(dir).filter((x) => x.endsWith('.ts') && x !== 'index.ts').sort()) {
-    problems.push(await load<AlgoProblem>(join(dir, f)));
-  }
-  const picked = new Map<number, AlgoProblem>();
-  for (const p of problems) if (!picked.has(p.level)) picked.set(p.level, p);
-  for (const p of picked.values()) {
-    writeModule(join(SAMPLE, 'algorithm', 'problems', `${p.id}.ts`), 'AlgoProblem', p);
-  }
-
   console.log(
-    `✓ 샘플 생성: 알고리즘 토픽 ${ALGO_TOPICS.length} · 문제 유형 ${patternCount} · CS ${CS_CATEGORIES.length} · 리뷰 ${REVIEW_FRAMEWORKS.length} · 코딩 문제 ${picked.size}개 (${[...picked.values()].map((p) => p.id).join(', ')})`,
+    `✓ 샘플 생성: 알고리즘 토픽 ${ALGO_TOPICS.length} · 문제 유형 ${patternCount} (${SAMPLE_PATTERN_TOPICS.join(', ')}) · CS ${CS_CATEGORIES.length} · 리뷰 ${REVIEW_FRAMEWORKS.length}`,
   );
 }
 

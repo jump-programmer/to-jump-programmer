@@ -51,6 +51,8 @@ export function initPwa() {
   });
   // 저장 공간이 부족할 때 브라우저가 학습 기록을 지우지 않도록 영구 저장을 요청한다 (허용 여부는 브라우저가 정한다)
   void navigator.storage?.persist?.().catch(() => false);
+  // 코드 실행 기능이 있던 이전 버전이 캐시해 둔 Python 실행 환경(Pyodide, 수십 MB)을 지운다
+  if (typeof caches !== 'undefined') void caches.delete('pyodide').catch(() => false);
 }
 
 function getHint(): InstallHint {

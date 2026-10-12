@@ -3,7 +3,6 @@
 #   - Secrets  CONTENT_DEPLOY_KEY : 비공개 콘텐츠 저장소(lgm1007/to-jump-content)의 읽기 전용 배포 키(SSH 개인 키)
 #   - Secrets  CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID : Cloudflare 배포용 ("Edit Cloudflare Workers" 토큰)
 #   - Variables(선택) ADSENSE_CLIENT · ADSENSE_SLOT : Google AdSense 게시자 ID(ca-pub-…) · 광고 단위 ID
-#   - Variables(선택) RUNNER_URL : Java · Kotlin · C++ 실행 서버 기본 주소
 name: Deploy web
 
 on:
@@ -58,7 +57,6 @@ jobs:
           TJ_WEB_ORIGIN: https://jumpprogrammer.app
           EXPO_PUBLIC_ADSENSE_CLIENT: ${{ vars.ADSENSE_CLIENT }}
           EXPO_PUBLIC_ADSENSE_SLOT: ${{ vars.ADSENSE_SLOT }}
-          EXPO_PUBLIC_RUNNER_URL: ${{ vars.RUNNER_URL }}
 
       - name: Cloudflare 배포
         uses: cloudflare/wrangler-action@v4

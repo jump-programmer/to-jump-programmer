@@ -1,14 +1,13 @@
 /**
- * Java 채점 하네스 생성기.
+ * Java 검증 하네스 생성기 — npm run validate 가 콘텐츠 예제 코드(class Solution)를 테스트 입력으로 실행할 때 쓴다.
  *
- * Piston(Java 15)은 `java Main.java`(단일 소스 파일 실행)로 실행하므로
- * main 메서드를 가진 Main 클래스가 파일의 첫 번째 클래스여야 한다.
- *   [import 문] → [public class Main { 하네스 }] → [사용자 코드(import 줄은 빈 줄로 대체)]
- * 사용자 코드의 줄 번호를 보존해 에러 메시지의 줄 번호를 되돌려 계산한다.
+ * `java Main.java`(단일 소스 파일 실행)로도 돌 수 있게 main 메서드를 가진 Main 클래스를 파일의 첫 번째 클래스로 둔다.
+ *   [import 문] → [public class Main { 하네스 }] → [예제 코드(import 줄은 빈 줄로 대체)]
+ * 예제 코드의 줄 번호를 보존해 에러 메시지의 줄 번호를 되돌려 계산한다.
  */
-import type { Signature, TestCase, ValueType } from '@/content/types';
+import type { Signature, TestCase, ValueType } from '../../../src/content/types';
 
-import { JAVA_TYPE } from './languages';
+import { JAVA_TYPE } from './value-types';
 import { MARK_BEGIN, MARK_END } from './protocol';
 
 const IMPORT_LINE = /^\s*((import\s+(static\s+)?[\w.]+(\.\*)?\s*;\s*)+)(\/\/.*|\/\*.*\*\/\s*)?$/;

@@ -1,7 +1,7 @@
 # To Jump Programmer — 개발자 취업·이직 준비 앱
 
 코딩 테스트, 코드 리뷰 테스트, 기술 면접을 **한 앱에서** 준비하는 모바일 학습 앱입니다.
-하루 10분씩 퀴즈·문제·면접 카드로 꾸준히 학습하도록 설계했습니다.
+하루 10분씩 퀴즈·알고리즘 유형·면접 카드로 꾸준히 학습하도록 설계했습니다.
 
 **[웹에서 바로 사용하기 → jumpprogrammer.app](https://jumpprogrammer.app)** 설치 · 로그인 없이 브라우저에서 바로 쓰고, 휴대폰에서는 홈 화면에 앱처럼 설치할 수 있습니다 (PWA).
 
@@ -13,20 +13,20 @@
 
 | 트랙 | 기능 |
 | --- | --- |
-| **알고리즘 · 코딩 테스트** | 14개 토픽 개념 정리 + 개념 퀴즈 112문항 · 프로그래머스 형식 코딩 문제 29개를 Python · Java · Kotlin · C++ · JavaScript 로 직접 풀고 채점 (힌트 · 해설 · 5개 언어 모범 답안) |
+| **알고리즘 · 코딩 테스트** | {{ALGO_ROW}} |
 | **코드 리뷰 테스트** | Spring Boot(Java · Kotlin 전환) / Node.js·NestJS / Django·Flask 별 **개선 패턴 학습** 10개(개선 전·후 코드, 변경점 diff, 리뷰 체크리스트)와 **리뷰 실전 퀴즈** 6개(문제 줄 찾기 → 문제점 고르기 → 채점 · 모범 리뷰 · 베스트 개선안) — 총 48개 |
 | **기술 면접 CS** | 15개 카테고리(OS · 네트워크 · 자료구조 · DB · 보안 · Java · JS/TS · Python · Spring · NestJS · Django · 아키텍처 · 인프라 · OOP · 실무) 퀴즈 225문항 + 면접 질문 카드 120장(모범 답안 · 핵심 키워드 자가 체크 · 꼬리 질문) |
 | **학습 관리** | 오늘의 추천 · 하루 목표 · 연속 학습일 · 학습 잔디 · 오답노트 · 북마크 · 다시 볼 카드 · 다크 모드 · 학습 기록 백업/복원(웹) |
 
-> 코딩 문제의 테스트 케이스는 5개 언어 모범 답안을 실제로 실행해 검증합니다 (`npm run validate`).
+> 알고리즘 구현 예제는 모두 5개 언어로 실제 실행해 검증합니다 (`npm run validate`).
 >
 > **이 공개 저장소에는 샘플 콘텐츠만 들어 있습니다.** 전체 학습 콘텐츠는 비공개 저장소로 관리하며, 샘플만으로도 앱의 모든 기능을 실행해 볼 수 있습니다. ([콘텐츠 구성](#콘텐츠-구성))
 
 ## 스크린샷
 
-| 홈 · 오늘의 추천 | 개념 퀴즈 · 해설 | 코드 에디터 | 채점 결과 |
-| :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/home.png" width="200" alt="홈 화면: 오늘의 학습 목표와 추천 문제"> | <img src="docs/screenshots/quiz.png" width="200" alt="알고리즘 개념 퀴즈의 정답 해설"> | <img src="docs/screenshots/editor.png" width="200" alt="Python 코드 에디터"> | <img src="docs/screenshots/result.png" width="200" alt="숨겨진 테스트까지 통과한 채점 결과"> |
+| 홈 · 오늘의 추천 | 개념 퀴즈 · 해설 |
+| :---: | :---: |
+| <img src="docs/screenshots/home.png" width="200" alt="홈 화면: 오늘의 학습 목표와 추천"> | <img src="docs/screenshots/quiz.png" width="200" alt="알고리즘 개념 퀴즈의 정답 해설"> |
 
 | 코드 리뷰 퀴즈 | 면접 질문 카드 | 다크 모드 |
 | :---: | :---: | :---: |
@@ -47,34 +47,29 @@
 | 라우팅 | Expo Router (파일 기반) | 탭 + 스택 네비게이션, 딥링크 기본 지원 |
 | 상태·저장 | Zustand + AsyncStorage | 학습 기록을 **기기에만 저장** → 서버·DB 없이 동작, 운영자가 수집하는 개인정보 없음 |
 | 콘텐츠 | 앱 번들에 포함된 TypeScript 데이터 | CMS·API 서버 불필요. 콘텐츠 수정은 EAS Update(OTA)로 배포 |
-| 코드 에디터 | CodeMirror 6 (WebView 내장, 오프라인) | 구문 강조 · 자동 들여쓰기 · 괄호 짝 · 모바일 입력 지원 + 기호 입력 툴바 |
-| 코드 실행 | **기기 내 샌드박스**: Python(Pyodide/WebAssembly) · JavaScript(Web Worker) | 서버 없이 채점. Worker 를 강제 종료해 무한 루프에도 앱이 멈추지 않음 |
-| 코드 실행 (선택) | Java · Kotlin · C++: **Piston**(오픈소스) 자가 호스팅 | 저사양 서버 1대로 운영. 서버가 없어도 앱의 나머지 기능은 모두 동작 |
+| 코드 예제 | 읽기 전용 구문 강조(자체 하이라이터) + 핵심 해설 줄 강조 | 실행 서버 없이 5개 언어 예제를 오프라인으로 제공 |
+| 콘텐츠 검증 | 로컬 컴파일러 · 인터프리터로 모든 구현 예제 실행 | 앱에서 실행하지 않는 대신, 콘텐츠를 쓸 때 정확성을 보장 |
 | 수익화 | 앱: **Google AdMob** (`react-native-google-mobile-ads`) · 웹: **Google AdSense** | 무료 + 광고. 동의(UMP) · iOS 추적 허용(ATT) 처리 포함 |
 
 ---
 
 ## 주요 구현
 
-### 코드 실행 · 채점
+### 알고리즘 유형 · 구현 예제
 
 ```text
-[풀이 화면] ─ 실행/제출 ─▶ runSolution()
-   ├─ Python / JavaScript ─▶ 숨김 WebView(네이티브) / 브라우저(웹)
-   │      └─ 매니저가 언어별 Module Worker 관리 · 케이스별 제한 시간 초과 시 terminate
-   │          ├─ JavaScript: new Function 으로 solution 실행
-   │          └─ Python: Pyodide(CPython→WASM, 최초 1회 CDN 다운로드 후 캐시)
-   └─ Java / Kotlin / C++ ─▶ 채점 하네스 코드 생성(테스트 입력을 리터럴로 삽입)
-          └─ Piston /api/v2/execute ─▶ 표준 출력 마커 파싱 → 케이스별 결과
+[토픽] 개념 정리 ─▶ 유형 목록 ─▶ [유형] 이런 문제에서 써요 · 접근 방법 · 예제 문제
+                                    └─ 구현 예제 1~3가지 (예: 재귀 vs 반복, 완전 탐색 vs 최적화) × 5개 언어
+                                         └─ 핵심 해설 ↔ 코드 줄 강조 (같은 내용이 언어마다 다른 줄에 있어 줄 번호를 언어별로 지정)
 ```
 
-- 채점은 프로그래머스처럼 `solution` 함수의 **반환값**을 비교합니다. `print`/`console.log` 출력은 케이스별로 따로 보여줍니다.
-- 에러 메시지의 줄 번호는 하네스 코드를 제외한 **사용자 코드 기준**으로 바꿔 표시합니다.
-- Java · Kotlin · C++ 실행 서버(Piston + Caddy 자동 HTTPS)는 [`infra/runner`](infra/runner) 의 docker-compose 로 띄우고, 앱의 마이 › 설정에서 서버 주소를 입력해 연결합니다.
+- 코드는 앱에서 실행하지 않고 **읽으며 비교**합니다. 언어 칩으로 Python · Java · Kotlin · C++ · JavaScript 를 바꾸고, 해설 번호나 코드 줄을 누르면 해당 줄이 강조됩니다.
+- 예제 코드의 정확성은 콘텐츠를 쓸 때 보장합니다. `npm run validate` 가 유형마다 예제 문제의 테스트를 모든 구현 · 모든 언어로 실행합니다. Java · Kotlin · C++ 는 테스트 입력을 리터럴로 넣은 하네스 코드를 만들어 컴파일하고, 표준 출력 마커로 결과를 비교합니다 (`scripts/lib/harness`).
+- 이전 버전에는 직접 풀이 · 채점 기능(기기 내 Pyodide · Piston 실행 서버)이 있었지만, 실행 서버의 운영 비용 · 격리 보안 부담으로 제거했습니다. 기존 풀이 기록은 지우지 않고 보존합니다.
 
 ### 코드 리뷰 언어 전환 (Spring Boot: Java · Kotlin)
 
-- 같은 개선 패턴 · 리뷰 퀴즈를 Java 와 Kotlin 코드로 모두 제공합니다. 처음에는 코딩 문제 풀이 언어를 따라가고, 화면의 칩으로 바꿀 수 있습니다.
+- 같은 개선 패턴 · 리뷰 퀴즈를 Java 와 Kotlin 코드로 모두 제공합니다. 처음에는 코딩 테스트 기본 언어를 따라가고, 화면의 칩으로 바꿀 수 있습니다.
 - 언어 버전 콘텐츠는 코드와 채점 줄 번호만 새로 쓰고, 설명은 그 언어에서 달라지는 필드만 덮어씁니다. 검증 스크립트가 숨겨진 이슈 수 · 줄 번호 · 덮어쓰지 않은 Java 코드 예시를 검사합니다.
 
 ### 광고
@@ -82,10 +77,10 @@
 | 위치 | 형식 | 규칙 |
 | --- | --- | --- |
 | 앱: 탭 화면 하단(탭 바 위) | 배너 (320×50) | 항상. 불러오지 못하면 자리를 차지하지 않음 |
-| 앱: 퀴즈 · 면접 카드 · 코드 리뷰 퀴즈 · 코딩 문제를 마치고 나갈 때 | 전면 광고 | 세션 2번 마칠 때마다 1번, 앱 실행 직후·직전 광고 후 3분간 노출 안 함 |
-| 웹: 탭 화면 · 개선 패턴 · 토픽 · 면접 카테고리 · 학습 결과 화면의 콘텐츠 사이 | AdSense 반응형 디스플레이 | 화면을 옮길 때만 요청, 채워지지 않으면 자리를 차지하지 않음 |
+| 앱: 퀴즈 · 면접 카드 · 코드 리뷰 퀴즈를 마치고 나갈 때 | 전면 광고 | 세션 2번 마칠 때마다 1번, 앱 실행 직후·직전 광고 후 3분간 노출 안 함 |
+| 웹: 탭 화면 · 개선 패턴 · 알고리즘 토픽 · 유형 · 면접 카테고리 · 학습 결과 화면의 콘텐츠 사이 | AdSense 반응형 디스플레이 | 화면을 옮길 때만 요청, 채워지지 않으면 자리를 차지하지 않음 |
 
-- 문제를 푸는 중(퀴즈 진행 · 코드 에디터 · 카드 학습)에는 광고를 띄우지 않습니다.
+- 문제를 푸는 중(퀴즈 진행 · 카드 학습)에는 광고를 띄우지 않습니다.
 - 웹은 메뉴 · 버튼 가까이에 광고를 두지 않도록(실수 클릭 방지 정책) 탭 바 위 고정 배너 대신 콘텐츠 사이에 둡니다.
 - 광고 ID 는 저장소에 넣지 않고 빌드 환경 변수로 주입하며, 값이 없으면 앱은 Google 테스트 광고로, 웹은 광고 없이 동작합니다. 웹 배포 · AdSense 설정은 [`docs/WEB.md`](docs/WEB.md) 에 있습니다.
 
@@ -96,8 +91,8 @@
 | 위치 | 내용 | 공개 여부 |
 | --- | --- | --- |
 | `src/content/types.ts` 와 토픽·카테고리 목록 | 콘텐츠 스키마 | 공개 |
-| `src/content/sample/` | 토픽마다 일부만 담은 샘플 | 공개 |
-| 비공개 저장소 | 전체 학습 콘텐츠 (퀴즈 · 코딩 문제 · 코드 리뷰 · 면접 카드) | 비공개 |
+| `src/content/sample/` | 토픽마다 일부만 담은 샘플 (알고리즘 유형은 이분 탐색 · DFS/BFS 토픽만) | 공개 |
+| 비공개 저장소 | 전체 학습 콘텐츠 (퀴즈 · 알고리즘 유형 · 코드 리뷰 · 면접 카드) | 비공개 |
 | `src/content/data/` | 앱이 실제로 읽는 콘텐츠. `npm run content:sync` 가 전체 콘텐츠(없으면 샘플)를 복사 | git 제외 |
 
 스토어 출시용(`production`) 빌드는 `src/content/data` 가 전체 콘텐츠가 아니면 실패하도록 해, 샘플로 출시되는 것을 막습니다.
@@ -117,13 +112,13 @@ npm run web        # 브라우저에서 실행 (개발 서버)
 
 | 명령 | 설명 |
 | --- | --- |
-| `npm run typecheck` | 앱 · 스크립트 · 에디터 타입 검사 |
+| `npm run typecheck` | 앱 · 스크립트 타입 검사 |
 | `npm run lint` | ESLint (React Compiler 규칙 포함) |
-| `npm test` | 핵심 로직 테스트 (마크다운 파서 · diff · 채점 비교 · 출력 파서 · 연속 학습일 · 백업 파일) |
+| `npm test` | 핵심 로직 테스트 (마크다운 파서 · diff · 검증 하네스 비교 · 출력 파서 · 오늘의 퀴즈 구성 · 연속 학습일 · 백업 파일) |
 | `npm run build:web` | 웹(PWA) 빌드 — `dist/` (서비스 워커 · manifest · sitemap · robots.txt · ads.txt 포함) |
 | `npm run preview:web` | 웹 빌드를 로컬 정적 서버로 띄워 확인 |
-| `npm run test:harness` | Java · Kotlin · C++ 채점 하네스 테스트 (JDK, kotlinc, g++/clang++ 필요) |
-| `npm run validate` | 콘텐츠 구조 검증 + 코딩 문제 모범 답안 5개 언어 실행 검증 (python3, node, JDK 15+, kotlinc, g++/clang++ 필요) |
+| `npm run test:harness` | 콘텐츠 검증용 Java · Kotlin · C++ 하네스 테스트 (JDK, kotlinc, g++/clang++ 필요) |
+| `npm run validate` | 콘텐츠 구조 검증 + 알고리즘 구현 예제 5개 언어 실행 검증 (python3, node, JDK 15+, kotlinc, g++/clang++ 필요) |
 
 ---
 
@@ -133,31 +128,24 @@ npm run web        # 브라우저에서 실행 (개발 서버)
 src/
   app/                      # 화면 (Expo Router)
     (tabs)/                 #   홈 · 알고리즘 · 코드 리뷰 · 면접 CS · 마이
-    algorithm/              #   토픽 개념 정리 · 문제 상세 · 코드 풀이(에디터/실행/채점)
+    algorithm/              #   토픽(개념 정리 · 유형 목록) · 유형 상세(구현 예제 · 핵심 해설)
     review/                 #   개선 패턴 학습 · 리뷰 실전 퀴즈
     interview/[id].tsx      #   CS 카테고리 상세
     quiz.tsx · cards.tsx    #   퀴즈 세션 · 면접 카드 세션
     notes · bookmarks · settings · privacy · onboarding
-  components/               # UI 컴포넌트 (코드 블록 · diff · 마크다운 렌더러 · 실행 결과 등)
+  components/               # UI 컴포넌트 (코드 블록 · diff · 마크다운 렌더러 등)
   content/                  # 학습 콘텐츠 (스키마 · 토픽/카테고리 목록 · 진입점)
     sample/                 #   공개용 샘플 콘텐츠
     data/                   #   앱이 읽는 콘텐츠 (git 제외)
   features/
-    runner/                 # 코드 실행·채점
-      core/                 #   시작 코드 · Java/Kotlin/C++ 채점 하네스 생성 · 결과 비교 (Node 에서도 재사용)
-      sandbox/              #   Web Worker 샌드박스 (Python/Pyodide, JavaScript)
-      remote.ts             #   Piston 클라이언트 (Java/Kotlin/C++)
-    editor/                 # CodeMirror WebView/iframe 래퍼 · 키보드 툴바
     progress/               # 학습 기록 저장소 · 통계 · 오늘의 추천 · 백업/복원
     ads/                    # 광고: AdMob(앱 · 하단 배너 · 전면 광고 · 동의/ATT), AdSense(웹)
     pwa/                    # 웹 앱 설치(홈 화면 추가) 상태
   lib/                      # markdown-lite 파서 · 구문 강조 · diff · 날짜 유틸
   theme/                    # 디자인 토큰 (라이트/다크)
-editor/src/main.ts          # 내장 코드 에디터 소스 (esbuild 로 번들)
-scripts/                    # 콘텐츠 동기화·검증 · 에디터 번들 · 아이콘 생성 · 웹(PWA) 빌드
+scripts/                    # 콘텐츠 동기화 · 검증(lib/harness: 5개 언어 실행 하네스) · 아이콘 생성 · 웹(PWA) 빌드
 public/icons/               # 웹 앱 설치 아이콘
 .github/workflows/          # 웹 버전 Cloudflare 배포 (wrangler.jsonc)
-infra/runner/               # Java·Kotlin·C++ 실행 서버 (Piston + Caddy HTTPS) docker-compose
 plugins/                    # 로컬 Expo config plugin (iOS UIScene 생명주기)
 docs/                       # 콘텐츠 작성 가이드 · 웹 배포 가이드 · 개인정보 처리방침 · 스크린샷
 ```
@@ -169,14 +157,14 @@ docs/                       # 콘텐츠 작성 가이드 · 웹 배포 가이드
 - 프론트엔드 트랙 (React · Next.js 코드 리뷰, 브라우저/프론트 CS)
 - 계정 · 기기 간 학습 기록 동기화
 - 콘텐츠 원격 업데이트 (앱 업데이트 없이 문제 추가)
-- 대용량 입력 기반 효율성 테스트, 문제 수 확대
-- Java · Kotlin · C++ 기기 내 실행 (WebAssembly 기반 컴파일러/JVM 검토) — 서버 없이 모든 언어 채점
+- 알고리즘 문제 유형 · 구현 예제 확대
+- 직접 풀이 · 채점 (실행 서버를 무료 · 안전하게 운영할 방법이 생기면 재검토)
 - 면접 답변 음성 녹음 · 셀프 피드백
 - 광고 제거 인앱 결제
 
 ## 오픈소스
 
-Expo · React Native · CodeMirror 6 · Pyodide · Piston(서버, 선택) 을 사용합니다. 각 프로젝트의 라이선스를 따릅니다.
+Expo · React Native 를 사용합니다. 각 프로젝트의 라이선스를 따릅니다.
 
 ## 라이선스
 
