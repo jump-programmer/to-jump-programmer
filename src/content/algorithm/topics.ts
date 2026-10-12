@@ -1,12 +1,18 @@
 import type { AlgoTopic } from '../types';
 
-/** 개념 퀴즈 토픽 (코딩 문제의 topics 태그로도 사용) */
+/** 알고리즘 토픽 — 개념 정리 · 문제 유형 · 개념 퀴즈 (코딩 문제의 topics 태그로도 사용) */
 export const ALGO_TOPICS: AlgoTopic[] = [
   {
     id: 'complexity',
     title: '시간 복잡도',
     description: 'Big-O 표기법과 입력 크기별 허용 복잡도',
     icon: 'speedometer-outline',
+  },
+  {
+    id: 'implementation',
+    title: '구현 · 문자열',
+    description: '시뮬레이션, 격자 이동, 문자열 처리',
+    icon: 'construct-outline',
   },
   {
     id: 'sorting',

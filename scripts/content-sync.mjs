@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { writeProblemIndex } from './gen-problem-index.mjs';
+import { writePatternIndex, writeProblemIndex } from './gen-problem-index.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'src', 'content', 'data');
@@ -21,7 +21,7 @@ const SAMPLE = join(ROOT, 'src', 'content', 'sample');
 const MARKER = join(DATA, '.source');
 const PRIVATE = resolve(ROOT, process.env.TJ_CONTENT_DIR ?? '../to-jump-content');
 /** 콘텐츠 폴더 구조 (비공개 저장소와 샘플이 같은 구조) */
-const PARTS = ['algorithm/quiz', 'algorithm/problems', 'cs', 'review'];
+const PARTS = ['algorithm/quiz', 'algorithm/patterns', 'algorithm/problems', 'cs', 'review'];
 
 const args = new Set(process.argv.slice(2));
 if (args.has('--eas')) {
@@ -57,9 +57,10 @@ function copyFrom(src, source) {
     mkdirSync(dirname(to), { recursive: true });
     writeFileSync(to, from);
   }
-  const keep = new Set([...wanted, '.source', join('algorithm', 'problems', 'index.ts')]);
+  const keep = new Set([...wanted, '.source', join('algorithm', 'problems', 'index.ts'), join('algorithm', 'patterns', 'index.ts')]);
   for (const f of listFiles(DATA)) if (!keep.has(f)) rmSync(join(DATA, f));
   writeProblemIndex(join(DATA, 'algorithm', 'problems'));
+  writePatternIndex(join(DATA, 'algorithm', 'patterns'));
   writeFileSync(MARKER, `${source}\n`);
   console.log(`✓ 콘텐츠 동기화: ${source === 'full' ? `전체 콘텐츠 (${PRIVATE})` : '샘플 콘텐츠'} → src/content/data (${wanted.size}개 파일)`);
 }

@@ -122,6 +122,7 @@ test('학습 기록 백업 만들기 · 읽기', () => {
     problems: { p1: { solved: true, language: 'kotlin', bestPassed: 3, total: 3, submissions: 1, lastAt: 1 } },
     patterns: {},
     challenges: {},
+    algoPatterns: { 'binary-search-lower-bound': 1 },
     bookmarks: {},
     activity: { '2026-10-09': 3, '2026-10-10': 1 },
     daily: null,
@@ -144,6 +145,7 @@ test('잘못된 백업 파일은 거절', () => {
   reject({ ...ok, format: 99 });
   reject({ ...ok, progress: { settings: {} } });
   reject({ ...ok, progress: { ...ok.progress, quiz: [] } });
+  reject({ ...ok, progress: { ...ok.progress, algoPatterns: 'x' } });
   reject({ ...ok, progress: { ...ok.progress, daily: 'x' } });
   reject({ ...ok, drafts: { drafts: { a: 1 }, lastLanguage: {} } });
 });

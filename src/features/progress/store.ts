@@ -8,7 +8,7 @@ import { dayKey } from '@/lib/date';
 export type CareerGoal = 'new' | 'career';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type CardRating = 'again' | 'hard' | 'good';
-export type BookmarkKind = 'question' | 'card' | 'problem' | 'pattern' | 'challenge';
+export type BookmarkKind = 'question' | 'card' | 'problem' | 'pattern' | 'challenge' | 'algoPattern';
 
 export interface Profile {
   nickname: string;
@@ -80,8 +80,11 @@ export interface ProgressData {
   quiz: Record<string, QuizRecord>;
   cards: Record<string, CardRecord>;
   problems: Record<string, ProblemRecord>;
+  /** 코드 리뷰 개선 패턴 id → 학습 완료 시각 */
   patterns: Record<string, number>;
   challenges: Record<string, ChallengeRecord>;
+  /** 알고리즘 문제 유형 id → 학습 완료 시각 */
+  algoPatterns: Record<string, number>;
   bookmarks: Record<string, { kind: BookmarkKind; at: number }>;
   /** YYYY-MM-DD → 학습 횟수 */
   activity: Record<string, number>;
@@ -97,6 +100,7 @@ interface ProgressActions {
   rateCard: (id: string, rating: CardRating) => void;
   recordSubmission: (id: string, result: { passed: number; total: number; language: SolveLanguage }) => void;
   markPatternRead: (id: string) => void;
+  markAlgoPatternRead: (id: string) => void;
   recordChallenge: (id: string, score: number, note?: string) => void;
   toggleBookmark: (id: string, kind: BookmarkKind) => void;
   setDaily: (plan: DailyPlanRecord) => void;
@@ -130,6 +134,7 @@ const EMPTY_PROGRESS = {
   problems: {},
   patterns: {},
   challenges: {},
+  algoPatterns: {},
   bookmarks: {},
   activity: {},
   daily: null,
@@ -205,6 +210,13 @@ export const useProgress = create<ProgressState>()(
             : { patterns: { ...s.patterns, [id]: Date.now() }, activity: bumpActivity(s.activity) },
         ),
 
+      markAlgoPatternRead: (id) =>
+        set((s) =>
+          s.algoPatterns[id]
+            ? {}
+            : { algoPatterns: { ...s.algoPatterns, [id]: Date.now() }, activity: bumpActivity(s.activity) },
+        ),
+
       recordChallenge: (id, score, note) =>
         set((s) => {
           const prev = s.challenges[id];
@@ -251,7 +263,7 @@ export const useProgress = create<ProgressState>()(
       onRehydrateStorage: () => (_state, error) => {
         if (error) void AsyncStorage.removeItem('tj-progress').catch(() => {});
       },
-      partialize: ({ profile, settings, quiz, cards, problems, patterns, challenges, bookmarks, activity, daily }) => ({
+      partialize: ({ profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, bookmarks, activity, daily }) => ({
         profile,
         settings,
         quiz,
@@ -259,6 +271,7 @@ export const useProgress = create<ProgressState>()(
         problems,
         patterns,
         challenges,
+        algoPatterns,
         bookmarks,
         activity,
         daily,

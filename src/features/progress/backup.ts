@@ -24,19 +24,19 @@ export interface BackupFile {
 
 export type ParsedBackup = { ok: true; backup: BackupFile } | { ok: false; error: string };
 
-const RECORD_KEYS = ['quiz', 'cards', 'problems', 'patterns', 'challenges', 'bookmarks', 'activity'] as const;
+const RECORD_KEYS = ['quiz', 'cards', 'problems', 'patterns', 'challenges', 'algoPatterns', 'bookmarks', 'activity'] as const;
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 export function createBackup(progress: ProgressData, drafts: DraftsData, now = new Date()): BackupFile {
-  const { profile, settings, quiz, cards, problems, patterns, challenges, bookmarks, activity, daily } = progress;
+  const { profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, bookmarks, activity, daily } = progress;
   return {
     app: BACKUP_APP,
     format: BACKUP_FORMAT,
     exportedAt: now.toISOString(),
-    progress: { profile, settings, quiz, cards, problems, patterns, challenges, bookmarks, activity, daily },
+    progress: { profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, bookmarks, activity, daily },
     drafts: { drafts: drafts.drafts, lastLanguage: drafts.lastLanguage },
   };
 }

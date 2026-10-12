@@ -311,7 +311,7 @@ export interface TestCase {
   output: unknown;
 }
 
-/** 코딩 문제 풀이 언어 */
+/** 코딩 문제 풀이 · 알고리즘 구현 예제 언어 */
 export type SolveLanguage = 'python' | 'java' | 'kotlin' | 'cpp' | 'javascript';
 
 /**
@@ -349,4 +349,67 @@ export interface AlgoProblem {
   /** 풀이 해설 (RichText) */
   explanation: RichText;
   complexity: { time: string; space: string };
+}
+
+/* ------------------------------------------------------------------ */
+/* 알고리즘 유형별 구현 예제                                              */
+/* ------------------------------------------------------------------ */
+
+/** 구현 예제의 핵심 해설. 같은 내용이 언어마다 다른 줄에 있어 줄 번호를 언어별로 지정한다 */
+export interface AlgoKeyPoint {
+  /** 짧은 제목 (예: '탐색 범위', '중간값 오버플로') */
+  title: string;
+  /** 설명 (RichText) */
+  explanation: RichText;
+  /** 언어별로 강조할 줄 번호 (1부터) */
+  lines: Record<SolveLanguage, number[]>;
+}
+
+/** 한 가지 접근 방식의 구현 예제 (5개 언어) */
+export interface AlgoImplementation {
+  /** 접근 방식 이름 (예: '반복문', '재귀', '정렬 + 투 포인터') */
+  title: string;
+  /** 이 구현의 특징 (인라인 RichText, 한두 문장) */
+  summary: string;
+  complexity: { time: string; space: string };
+  /** 언어별 코드 — 모든 언어가 예제 문제의 solution 함수를 구현한다 */
+  code: Record<SolveLanguage, string>;
+  /** 핵심 구현 해설 (2~5개) */
+  keyPoints: AlgoKeyPoint[];
+}
+
+/** 유형의 예제 문제. 구현 예제가 모두 이 함수를 구현하고, tests 로 예제 코드를 실제로 실행해 검증한다 */
+export interface AlgoPatternExample {
+  /** 문제 설명 (RichText, 짧게) */
+  description: RichText;
+  signature: Signature;
+  /** 화면에 보여주는 입출력 예 (1~3개) */
+  examples: TestCase[];
+  /** 검증용 테스트 (5개 이상, 화면에는 보이지 않음 — npm run validate 가 모든 언어로 실행) */
+  tests: TestCase[];
+  compare?: CompareMode;
+}
+
+/** 알고리즘 토픽에서 자주 출제되는 문제 유형 (algorithm/patterns/<id>.ts, 파일 1개 = 유형 1개) */
+export interface AlgoPattern {
+  /** 토픽 id 로 시작하는 kebab-case. 예: 'binary-search-lower-bound' */
+  id: string;
+  topicId: string;
+  /** 토픽 안에서의 순서 (1부터) */
+  order: number;
+  title: string;
+  /** 한 줄 요약 */
+  summary: string;
+  difficulty: Difficulty;
+  /** 이 유형을 알아보는 신호 — 문제에 이런 표현 · 조건이 보이면 (인라인 RichText, 2~4개) */
+  whenToUse: string[];
+  /** 접근 방법 (RichText) */
+  approach: RichText;
+  example: AlgoPatternExample;
+  /** 구현 예제 (변형이 있으면 2~3개, 없으면 1개) */
+  implementations: AlgoImplementation[];
+  /** 자주 하는 실수 (인라인 RichText) */
+  pitfalls?: string[];
+  /** 관련 개념 퀴즈 id */
+  quizIds?: string[];
 }

@@ -6,17 +6,22 @@ import type { CodeLanguage } from '@/content';
 import { LANGUAGE_LABEL } from '@/lib/highlight';
 import { useColors } from '@/theme/theme-provider';
 
-/** 코드 리뷰 코드 언어 선택 (예: Spring Boot 의 Java / Kotlin). 언어가 하나뿐이면 그리지 않는다 */
-export function ReviewLanguageToggle({
+/**
+ * 코드 언어 선택 (코드 리뷰의 Spring Boot Java / Kotlin, 알고리즘 구현 예제의 5개 언어). 언어가 하나뿐이면 그리지 않는다
+ */
+export function ReviewLanguageToggle<L extends CodeLanguage>({
   languages,
   value,
   onChange,
   hint,
+  tint,
 }: {
-  languages: CodeLanguage[];
-  value: CodeLanguage;
-  onChange: (language: CodeLanguage) => void;
+  languages: L[];
+  value: L;
+  onChange: (language: L) => void;
   hint?: string;
+  /** 선택된 칩 색 (기본: 코드 리뷰 색) */
+  tint?: string;
 }) {
   const c = useColors();
   if (languages.length < 2) return null;
@@ -27,7 +32,7 @@ export function ReviewLanguageToggle({
       </Text>
       <View style={styles.chips}>
         {languages.map((l) => (
-          <Chip key={l} label={LANGUAGE_LABEL[l] ?? l} selected={value === l} onPress={() => onChange(l)} tint={c.review} />
+          <Chip key={l} label={LANGUAGE_LABEL[l] ?? l} selected={value === l} onPress={() => onChange(l)} tint={tint ?? c.review} />
         ))}
       </View>
       {!!hint && (
@@ -41,6 +46,6 @@ export function ReviewLanguageToggle({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  chips: { flexDirection: 'row', gap: 6 },
+  chips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   hint: { flexBasis: '100%' },
 });
