@@ -1,4 +1,4 @@
-import type { CompareMode } from '@/content/types';
+import type { CompareMode } from '../../../src/content/types';
 
 const FLOAT_EPS = 1e-6;
 

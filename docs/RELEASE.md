@@ -19,7 +19,6 @@ Expo EAS 로 맥/Xcode 없이 클라우드에서 빌드하고 App Store · Googl
 - [ ] `ios.bundleIdentifier`, `android.package` 를 본인 도메인 기반으로 변경 (예: `com.mycompany.tojump`) — **출시 후에는 바꿀 수 없음**
 - [ ] `version` (사용자에게 보이는 버전) — 빌드 번호는 `eas.json` 의 `autoIncrement` 가 관리
 - [ ] 아이콘/스플래시 교체 시 `scripts/generate-icons.py` 수정 후 재생성
-- [ ] (선택) Java·Kotlin·C++ 실행 서버 기본값: EAS 환경 변수 `EXPO_PUBLIC_RUNNER_URL`
 - [ ] AdMob 앱 ID · 광고 단위 ID 를 EAS 환경 변수(production)에 등록 — 없으면 production 빌드가 중단됨 (아래 참고)
 
 ## 광고(AdMob) 설정
@@ -29,9 +28,9 @@ Expo EAS 로 맥/Xcode 없이 클라우드에서 빌드하고 App Store · Googl
 | 위치 | 형식 | 노출 규칙 |
 | --- | --- | --- |
 | 탭 화면(홈·알고리즘·코드 리뷰·면접 CS·마이) 하단, 탭 바 바로 위 | 배너 (320×50) | 항상 (불러오지 못하면 자리를 차지하지 않음) |
-| 퀴즈 · 면접 카드 · 코드 리뷰 퀴즈 · 코딩 문제(정답 후 다음 문제)를 마치고 나갈 때 | 전면 광고 | 세션 2번 마칠 때마다 1번, 앱 실행 직후·직전 광고 후 3분 동안은 노출 안 함 |
+| 퀴즈 · 면접 카드 · 코드 리뷰 퀴즈를 마치고 나갈 때 | 전면 광고 | 세션 2번 마칠 때마다 1번, 앱 실행 직후·직전 광고 후 3분 동안은 노출 안 함 |
 
-문제를 푸는 중(퀴즈 진행, 코드 에디터, 카드 학습)에는 광고를 띄우지 않습니다. 노출 규칙은 `src/features/ads/config.ts` 의 `INTERSTITIAL_POLICY` 에서 조정합니다.
+문제를 푸는 중(퀴즈 진행, 카드 학습)에는 광고를 띄우지 않습니다. 노출 규칙은 `src/features/ads/config.ts` 의 `INTERSTITIAL_POLICY` 에서 조정합니다.
 
 ### 1) AdMob 가입과 앱 · 광고 단위 만들기
 
@@ -102,7 +101,7 @@ npx eas-cli@latest submit -p android --profile production   # 최초 1회는 Pla
 ### 공통
 - **카테고리**: 교육 (Education)
 - **연령 등급**: 전체 이용가 (폭력·사용자 간 소통 없음). 광고는 포함하며, 광고 콘텐츠 등급을 PG 이하로 제한함(`src/features/ads/google.tsx`)
-- **스크린샷**: 홈 / 코드 풀이(에디터) / 채점 결과 / 코드 리뷰 퀴즈 / 면접 카드 화면 추천
+- **스크린샷**: 홈 / 알고리즘 유형(구현 예제 · 핵심 해설) / 코드 리뷰 퀴즈 / 면접 카드 화면 추천
 - **짧은 설명 예시**: 코딩 테스트 · 코드 리뷰 · 기술 면접을 하루 10분씩 준비하는 개발자 취업·이직 학습 앱
 
 ### App Store Connect
@@ -113,7 +112,7 @@ npx eas-cli@latest submit -p android --profile production   # 최초 1회는 Pla
   - 진단 › 충돌 데이터, 성능 데이터 — 분석
 - **수출 규정(암호화)**: `app.json` 에 `usesNonExemptEncryption: false` 가 설정되어 있어 매 빌드 질문을 생략
 - **심사 메모 예시**:
-  > 이 앱은 프로그래밍 학습용 교육 앱입니다. 사용자가 직접 작성한 학습용 코드를 WKWebView 안의 격리된 Web Worker 에서 실행해 채점합니다(App Review Guideline 2.5.2 의 교육용 예외). Python 실행을 위해 WebAssembly 인터프리터(Pyodide)를 최초 1회 내려받으며, 앱의 기능을 변경하는 코드는 내려받지 않습니다. 로그인 없이 모든 기능을 사용할 수 있습니다.
+  > 이 앱은 프로그래밍 학습용 교육 앱입니다. 학습 콘텐츠(개념 정리, 퀴즈, 알고리즘 코드 예제, 면접 질문)는 모두 앱에 포함되어 있으며, 코드를 내려받거나 실행하지 않습니다. 로그인 없이 모든 기능을 사용할 수 있습니다.
 
 ### Google Play Console
 - **데이터 보안(Data safety)**: 광고 SDK 가 수집·공유하는 항목을 신고합니다. [Google 안내](https://developers.google.com/admob/android/privacy/play-data-disclosure) 기준 예시 — 제출 전 최신 안내를 확인하세요.
@@ -128,8 +127,8 @@ npx eas-cli@latest submit -p android --profile production   # 최초 1회는 Pla
 
 - [ ] `npm run content:sync` 로 **전체 콘텐츠**를 맞춘 뒤 빌드 (`src/content/data/.source` 가 `full`). production 빌드는 샘플이면 실패합니다. `eas update` 도 같은 상태에서 실행하세요.
 - [ ] `npm run typecheck` · `npm run validate` 통과
-- [ ] 실기기(iOS·Android)에서 확인: 온보딩 → 퀴즈 → 코드 풀이(Python 첫 실행 다운로드, 무한 루프 시간 초과) → 코드 리뷰 퀴즈 → 면접 카드 → 다크 모드
-- [ ] 키보드가 열렸을 때 코드 에디터 · 기호 툴바 위치 (iPhone SE 같은 작은 화면 포함)
-- [ ] 비행기 모드에서 Python 외 기능 정상 동작 확인
+- [ ] 실기기(iOS·Android)에서 확인: 온보딩 → 퀴즈 → 알고리즘 유형(언어 전환 · 핵심 해설 줄 강조) → 코드 리뷰 퀴즈 → 면접 카드 → 다크 모드
+- [ ] 작은 화면(iPhone SE 등)에서 구현 예제 코드 가로 스크롤 · 줄바꿈 확인
+- [ ] 비행기 모드에서 모든 학습 기능 정상 동작 확인
 - [ ] 개인정보 처리방침 URL 게시
 - [ ] AdMob: EAS 환경 변수 6개 등록, `app-ads.txt` 게시, 개발 빌드에서 테스트 광고 노출 확인

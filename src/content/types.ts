@@ -279,7 +279,7 @@ export interface AlgoTopicContent {
   questions: QuizQuestion[];
 }
 
-/** 코딩 문제 파라미터/반환 타입 */
+/** 알고리즘 예제 문제의 파라미터/반환 타입 */
 export type ValueType =
   | 'int'
   | 'long'
@@ -311,7 +311,7 @@ export interface TestCase {
   output: unknown;
 }
 
-/** 코딩 문제 풀이 · 알고리즘 구현 예제 언어 */
+/** 코딩 테스트 언어 — 알고리즘 구현 예제를 이 5개 언어로 제공한다 */
 export type SolveLanguage = 'python' | 'java' | 'kotlin' | 'cpp' | 'javascript';
 
 /**
@@ -321,35 +321,6 @@ export type SolveLanguage = 'python' | 'java' | 'kotlin' | 'cpp' | 'javascript';
  * - float: 실수 오차 1e-6 허용
  */
 export type CompareMode = 'exact' | 'unordered' | 'float';
-
-export interface AlgoProblem {
-  /** kebab-case. 예: 'bracket-balance' */
-  id: string;
-  title: string;
-  /** Lv.1 ~ Lv.3 */
-  level: Difficulty;
-  /** AlgoTopic id 또는 'implementation' | 'string' | 'math' */
-  topics: string[];
-  /** 문제 설명 (RichText) */
-  description: RichText;
-  /** 제한사항 (인라인 RichText) */
-  constraints: string[];
-  signature: Signature;
-  /** 화면에 보여주는 입출력 예 (2~3개) */
-  examples: TestCase[];
-  /** 입출력 예 설명 (RichText, 선택) */
-  exampleNotes?: RichText;
-  /** 채점용 숨김 테스트 (8~15개, 엣지 케이스 포함) */
-  tests: TestCase[];
-  compare?: CompareMode;
-  /** 단계별 힌트 (2~3개) */
-  hints: string[];
-  /** 언어별 모범 답안 */
-  solutions: Record<SolveLanguage, string>;
-  /** 풀이 해설 (RichText) */
-  explanation: RichText;
-  complexity: { time: string; space: string };
-}
 
 /* ------------------------------------------------------------------ */
 /* 알고리즘 유형별 구현 예제                                              */

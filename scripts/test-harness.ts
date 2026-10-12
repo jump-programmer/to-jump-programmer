@@ -1,8 +1,8 @@
 /**
- * Java · Kotlin · C++ 채점 하네스 테스트 — 모든 ValueType 의 값 왕복(리터럴 생성 → 실행 → JSON 직렬화)과
- * 에러 줄 번호 변환을 실제 컴파일러로 확인한다. (JDK 15+, g++/clang++, kotlinc 필요)
+ * 콘텐츠 검증(npm run validate)에 쓰는 Java · Kotlin · C++ 하네스 테스트 — 모든 ValueType 의 값 왕복
+ * (리터럴 생성 → 실행 → JSON 직렬화)과 에러 줄 번호 변환을 실제 컴파일러로 확인한다. (JDK 15+, g++/clang++, kotlinc 필요)
  *   npm run test:harness
- * Kotlin 은 KOTLINC(컴파일러 경로)와 KOTLIN_JAVA_HOME(컴파일·실행에 쓸 JDK)로 Piston 과 같은 조합을 지정할 수 있다.
+ * Kotlin 은 KOTLINC(컴파일러 경로)와 KOTLIN_JAVA_HOME(컴파일·실행에 쓸 JDK)로 다른 버전 조합을 지정할 수 있다.
  *   KOTLINC=~/kotlinc-1.8.20/bin/kotlinc KOTLIN_JAVA_HOME=<JDK 8 경로> npm run test:harness
  */
 import assert from 'node:assert/strict';
@@ -13,12 +13,12 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import type { Signature, ValueType } from '../src/content/types';
-import { resultsMatch } from '../src/features/runner/core/compare';
-import { buildCppProgram, mapCppErrors } from '../src/features/runner/core/cpp-harness';
-import { buildJavaProgram, mapJavaErrors } from '../src/features/runner/core/java-harness';
-import { buildKotlinProgram, mapKotlinErrors } from '../src/features/runner/core/kotlin-harness';
-import { CPP_TYPE, JAVA_TYPE, KOTLIN_TYPE, starterCode } from '../src/features/runner/core/languages';
-import { parseHarnessOutput } from '../src/features/runner/core/protocol';
+import { resultsMatch } from './lib/harness/compare';
+import { buildCppProgram, mapCppErrors } from './lib/harness/cpp-harness';
+import { buildJavaProgram, mapJavaErrors } from './lib/harness/java-harness';
+import { buildKotlinProgram, mapKotlinErrors } from './lib/harness/kotlin-harness';
+import { parseHarnessOutput } from './lib/harness/protocol';
+import { CPP_TYPE, JAVA_TYPE, KOTLIN_TYPE } from './lib/harness/value-types';
 
 const CXX = spawnSync('g++', ['--version']).status === 0 ? 'g++' : 'clang++';
 const KOTLINC = process.env.KOTLINC ?? 'kotlinc';
@@ -185,14 +185,6 @@ async function testKotlin() {
     checkRoundTrip('kotlin', t, values, run.stdout);
     console.log(`  ✓ kotlin ${t}`);
   }
-
-  // 시작 코드(starter)가 모든 반환 타입에서 컴파일되는지 — 클래스 이름만 바꿔 한 파일로 컴파일한다
-  const starters = types
-    .map(([t], i) => starterCode('kotlin', { params: [{ name: 'x', type: t }], returns: t }).replace('class Solution', `class Starter${i}`))
-    .join('\n');
-  const starterRun = await runKotlin(`${starters}\nfun main() {}\n`);
-  assert.ok(starterRun.ok, `Kotlin 시작 코드 컴파일 실패:\n${starterRun.stderr}`);
-  console.log('  ✓ Kotlin 시작 코드 컴파일 (12개 반환 타입)');
 
   const intSig: Signature = { params: [{ name: 'n', type: 'int' }], returns: 'int' };
   const compiled = (code: string) => {

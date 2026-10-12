@@ -9,7 +9,6 @@
 | --- | --- |
 | 알고리즘 토픽 개념 + 퀴즈 | `algorithm/quiz/<토픽 id>.ts` |
 | 알고리즘 문제 유형 + 구현 예제 | `algorithm/patterns/<유형 id>.ts` (파일 1개 = 유형 1개) |
-| 코딩 문제 | `algorithm/problems/<문제 id>.ts` (파일 1개 = 문제 1개) |
 | CS 퀴즈 + 면접 카드 | `cs/<카테고리 id>.ts` |
 | 코드 리뷰 패턴 + 리뷰 퀴즈 | `review/<spring\|nest\|django>.ts` |
 | 코드 리뷰의 다른 언어 버전 (Spring Boot Kotlin) | `review/spring-kotlin.ts` = `spring-kotlin-patterns.ts` + `spring-kotlin-challenges.ts` |
@@ -20,7 +19,7 @@ CS 카테고리를 새로 만들면 앱의 `src/content/cs/categories.ts` 에 �
 
 ```bash
 npm run content:sync        # 비공개 콘텐츠 → src/content/data
-npm run validate            # 구조 검증 + 알고리즘 모범 답안 실행 검증(Python/JS/Java/Kotlin/C++)
+npm run validate            # 구조 검증 + 알고리즘 구현 예제 실행 검증(Python/JS/Java/Kotlin/C++)
 npm run validate -- --quick # 구조 검증만
 ```
 
@@ -111,9 +110,26 @@ Spring Boot 리뷰 콘텐츠는 Java(기본)와 Kotlin 두 언어로 제공합�
   - JPA 엔티티는 `data class`가 아닌 일반 `class`로 쓰고, DTO 는 `data class`로 씁니다.
   - Kotlin 문자열 템플릿의 `${…}` 는 TypeScript 템플릿 리터럴 안에서 `\${…}` 로 이스케이프합니다(`$id` 형태는 그대로 써도 됩니다). 코드 안의 `\n` 같은 백슬래시는 `\\n` 처럼 두 번 씁니다.
 
-## 6. 알고리즘 코딩 문제 (AlgoProblem)
+## 6. 알고리즘 문제 유형 · 구현 예제 (AlgoPattern)
 
-프로그래머스 스타일의 `solution` 함수 형식을 사용합니다.
+알고리즘 토픽마다 **이론(개념 정리, `algorithm/quiz/<토픽>.ts` 의 `primer`) → 자주 출제되는 문제 유형 → 유형별 구현 예제** 순서로 공부합니다. 사용자가 코드를 직접 실행하지 않으므로, 예제 코드는 읽고 비교하며 배우기 좋게 작성하고 **작성자가 실행해서 검증**합니다.
+
+### 구성
+- 유형 1개 = 파일 1개: `algorithm/patterns/<토픽 id>-<이름>.ts`, `export default` 로 `AlgoPattern` 하나를 내보냅니다. 토픽 안 순서는 `order`(1부터)로 정합니다.
+- 토픽마다 유형 2~4개를 둡니다. 이론만 있는 토픽(시간 복잡도)은 유형이 없어도 됩니다.
+- `whenToUse`: 문제에서 이 유형을 알아보는 신호 2~4개 (예: "정렬된 배열", "~ 이상이 되는 최솟값")
+- `approach`: 접근 방법. 왜 이 방법이 맞는지, 핵심 불변식이 무엇인지 설명합니다.
+- `example`: 유형을 대표하는 **짧은 예제 문제**. 모든 구현 예제가 이 문제의 `solution` 함수를 구현합니다.
+  - `examples`(화면에 보임, 1~3개)와 `tests`(검증용, 5개 이상)를 둡니다. 경계값(최소 입력, 중복, 음수, 답이 없는 경우)을 넣고, 데이터는 작게 유지합니다.
+  - 지문은 직접 창작합니다. 외부 문제 사이트 지문을 옮기지 않습니다.
+- `implementations`: 접근 방식이 다른 구현 **2~3개** (예: 재귀 vs 반복, 완전 탐색 vs 최적화, 정렬 + 투 포인터 vs 해시). 의미 있는 변형이 없으면 1개만 둡니다. 같은 알고리즘의 언어만 다른 버전은 변형이 아닙니다.
+  - `code`: **5개 언어(Python · JavaScript · Java · Kotlin · C++) 모두 필수**입니다. 형식은 아래 "코드 형식"을 따릅니다.
+  - `keyPoints`: 핵심 구현 해설 2~5개. 자료구조 선택, 경계 조건, 복잡도를 좌우하는 줄, 언어별 함정(오버플로, 정수 나눗셈 등)을 코드 줄에 연결해 설명합니다.
+  - `keyPoints[].lines`: **언어마다 줄 번호가 다르므로 언어별로 지정**합니다. 빈 줄 · 닫는 괄호만 있는 줄은 가리키지 않습니다.
+- `pitfalls`(선택): 자주 하는 실수. `quizIds`(선택): 같은 토픽의 관련 개념 퀴즈 id.
+
+### 코드 형식
+프로그래머스 스타일의 `solution` 함수 형식을 사용합니다. 예제 문제의 `signature` 타입은 언어별로 다음과 같이 대응합니다.
 
 | ValueType | Python | JavaScript | Java | Kotlin | C++ |
 | --- | --- | --- | --- | --- | --- |
@@ -130,45 +146,24 @@ Spring Boot 리뷰 콘텐츠는 Java(기본)와 Kotlin 두 언어로 제공합�
 | `int[][]` | list[list[int]] | number[][] | int[][] | Array&lt;IntArray&gt; | vector&lt;vector&lt;int&gt;&gt; |
 | `string[][]` | list[list[str]] | string[][] | String[][] | Array&lt;Array&lt;String&gt;&gt; | vector&lt;vector&lt;string&gt;&gt; |
 
-- 모범 답안 형식
-  - Python: `def solution(...):`
+- 함수 형식
+  - Python: `def solution(...):` (보조 함수는 같은 파일에 정의)
   - JavaScript: `function solution(...) { }`
   - Java: `class Solution { public <반환타입> solution(...) { } }` (필요한 `import`는 맨 위에)
   - Kotlin: `class Solution { fun solution(...): <반환타입> { } }` (필요한 `import`는 맨 위에, `main` 함수 없이)
   - C++: `#include` + `using namespace std;` + `<반환타입> solution(...) { }`
 - `long` 값은 JavaScript 안전 정수 범위(±9,007,199,254,740,991)를 넘지 않게 합니다.
-- Java 모범 답안은 실행 서버(Piston)의 **Java 15**, Kotlin 모범 답안은 **Kotlin 1.8.20 · JDK 8** 에서 컴파일되어야 합니다.
+- 코딩 테스트 사이트의 컴파일러 버전이 낮은 경우가 많아 **Java 15 · Kotlin 1.8 · JDK 8** 에서도 컴파일되는 문법만 씁니다.
   - Kotlin 1.9 이후 문법(`..<`, enum 의 `entries`, `data object`)과 JDK 9 이후 API(`List.of`, `Stream.toList()` 등)는 쓰지 않습니다. 범위는 `until`, 컬렉션은 Kotlin 표준 함수(`listOf`, `mutableListOf`)를 씁니다.
   - `java.util.PriorityQueue` 처럼 Java 클래스를 쓰면 `import` 를 명시합니다. (Kotlin 의 `ArrayDeque` 는 import 없이 쓸 수 있음)
-  - 실행 서버와 같은 조합으로 검증하려면 `KOTLINC=<kotlinc-1.8.20 경로> KOTLIN_JAVA_HOME=<JDK 8 경로> npm run validate`
-- 테스트 데이터는 앱 번들에 포함되므로 문제당 JSON 크기 15KB 이내로 유지합니다.
-- `tests`에는 경계값(최소 입력, 최대에 가까운 입력, 중복, 음수 등)을 포함합니다.
-- `compare: 'unordered'`는 1차원 배열 반환에서 순서를 무시할 때만 사용합니다.
-
-## 7. 알고리즘 문제 유형 · 구현 예제 (AlgoPattern)
-
-알고리즘 토픽마다 **이론(개념 정리, `algorithm/quiz/<토픽>.ts` 의 `primer`) → 자주 출제되는 문제 유형 → 유형별 구현 예제** 순서로 공부합니다. 사용자가 코드를 직접 실행하지 않으므로, 예제 코드는 읽고 비교하며 배우기 좋게 작성하고 **작성자가 실행해서 검증**합니다.
-
-### 구성
-- 유형 1개 = 파일 1개: `algorithm/patterns/<토픽 id>-<이름>.ts`, `export default` 로 `AlgoPattern` 하나를 내보냅니다. 토픽 안 순서는 `order`(1부터)로 정합니다.
-- 토픽마다 유형 2~4개를 둡니다. 이론만 있는 토픽(시간 복잡도)은 유형이 없어도 됩니다.
-- `whenToUse`: 문제에서 이 유형을 알아보는 신호 2~4개 (예: "정렬된 배열", "~ 이상이 되는 최솟값")
-- `approach`: 접근 방법. 왜 이 방법이 맞는지, 핵심 불변식이 무엇인지 설명합니다.
-- `example`: 유형을 대표하는 **짧은 예제 문제**. 모든 구현 예제가 이 문제의 `solution` 함수를 구현합니다.
-  - `examples`(화면에 보임, 1~3개)와 `tests`(검증용, 5개 이상)를 둡니다. 경계값(최소 입력, 중복, 음수, 답이 없는 경우)을 넣고, 데이터는 작게 유지합니다.
-  - 지문은 직접 창작합니다. 외부 문제 사이트 지문을 옮기지 않습니다.
-- `implementations`: 접근 방식이 다른 구현 **2~3개** (예: 재귀 vs 반복, 완전 탐색 vs 최적화, 정렬 + 투 포인터 vs 해시). 의미 있는 변형이 없으면 1개만 둡니다. 같은 알고리즘의 언어만 다른 버전은 변형이 아닙니다.
-  - `code`: **5개 언어(Python · JavaScript · Java · Kotlin · C++) 모두 필수**입니다. 형식은 6장의 모범 답안 형식과 같습니다.
-  - `keyPoints`: 핵심 구현 해설 2~5개. 자료구조 선택, 경계 조건, 복잡도를 좌우하는 줄, 언어별 함정(오버플로, 정수 나눗셈 등)을 코드 줄에 연결해 설명합니다.
-  - `keyPoints[].lines`: **언어마다 줄 번호가 다르므로 언어별로 지정**합니다. 빈 줄 · 닫는 괄호만 있는 줄은 가리키지 않습니다.
-- `pitfalls`(선택): 자주 하는 실수. `quizIds`(선택): 같은 토픽의 관련 개념 퀴즈 id.
+  - 그 버전으로 직접 검증하려면 `KOTLINC=<kotlinc-1.8 경로> KOTLIN_JAVA_HOME=<JDK 8 경로> npm run validate`
+- 예제 테스트 데이터도 앱 번들에 포함되므로 작게 유지합니다. `compare: 'unordered'`는 1차원 배열 반환에서 순서를 무시할 때만 사용합니다.
 
 ### 코드 작성 원칙
 - 코딩 테스트에서 실제로 쓰는 관용적인 형태로 씁니다. 표준 라이브러리를 쓰고, 입출력은 `solution` 함수 형태로 통일합니다.
 - 5개 언어의 **로직 · 함수 이름 · 변수 이름을 가능한 한 대응**시킵니다. 함수 순서도 맞춥니다(C++ 는 보조 함수를 `solution` 위에 둡니다). Python 은 snake_case, 나머지는 camelCase 를 씁니다.
 - 주석은 한국어로, 핵심 줄에만 짧게 답니다. 해설은 `keyPoints` 에 씁니다.
 - 한 줄은 100자 안쪽으로 씁니다. (휴대폰에서는 가로 스크롤 또는 줄바꿈으로 봅니다)
-- Java 15 · Kotlin 1.8 호환 문법만 씁니다. (6장의 제한과 같음 — 코딩 테스트 사이트의 컴파일러 버전이 낮은 경우가 많습니다)
 
 ### 검증
 ```bash

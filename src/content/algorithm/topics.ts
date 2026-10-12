@@ -1,6 +1,6 @@
 import type { AlgoTopic } from '../types';
 
-/** 알고리즘 토픽 — 개념 정리 · 문제 유형 · 개념 퀴즈 (코딩 문제의 topics 태그로도 사용) */
+/** 알고리즘 토픽 — 개념 정리 · 문제 유형 · 개념 퀴즈 */
 export const ALGO_TOPICS: AlgoTopic[] = [
   {
     id: 'complexity',
@@ -94,17 +94,6 @@ export const ALGO_TOPICS: AlgoTopic[] = [
   },
 ];
 
-/** 코딩 문제에서만 쓰는 보조 태그 */
-export const EXTRA_PROBLEM_TAGS: Record<string, string> = {
-  implementation: '구현',
-  string: '문자열',
-  math: '수학',
-};
-
 export const ALGO_TOPIC_MAP: Record<string, AlgoTopic> = Object.fromEntries(
   ALGO_TOPICS.map((t) => [t.id, t]),
 );
-
-export function topicLabel(id: string): string {
-  return ALGO_TOPIC_MAP[id]?.title ?? EXTRA_PROBLEM_TAGS[id] ?? id;
-}

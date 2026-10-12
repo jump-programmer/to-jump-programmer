@@ -1,10 +1,10 @@
 /**
- * C++ 채점 하네스 생성기 (C++17, g++/clang++ 호환).
+ * C++ 검증 하네스 생성기 (C++17, g++/clang++ 호환) — npm run validate 가 콘텐츠 예제 코드를 실행할 때 쓴다.
  *   [표준 헤더 + using namespace std] → [사용자 코드] → [직렬화 헬퍼 + 테스트 + main]
  */
-import type { Signature, TestCase, ValueType } from '@/content/types';
+import type { Signature, TestCase, ValueType } from '../../../src/content/types';
 
-import { CPP_TYPE } from './languages';
+import { CPP_TYPE } from './value-types';
 import type { GeneratedProgram } from './java-harness';
 import { MARK_BEGIN, MARK_END } from './protocol';
 

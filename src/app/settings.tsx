@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
@@ -11,15 +10,13 @@ import { Chip, Divider, SectionHeader } from '@/components/ui/misc';
 import { Screen } from '@/components/ui/screen';
 import { SegmentedControl } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
-import { CONTENT_STATS, REVIEW_FRAMEWORKS, type SolveLanguage } from '@/content';
+import { CONTENT_STATS, REVIEW_FRAMEWORKS, SOLVE_LANGUAGE_IDS } from '@/content';
 import { openAdPrivacyOptions, useAds } from '@/features/ads';
 import { backupFileName, createBackup, describeBackup, parseBackup } from '@/features/progress/backup';
 import { BACKUP_SUPPORTED, pickBackupFile, saveBackupFile } from '@/features/progress/backup-file';
-import { useDrafts, useProgress, type ThemePreference } from '@/features/progress/store';
-import { SOLVE_LANGUAGES } from '@/features/runner/core/languages';
-import { pingRemote } from '@/features/runner/remote';
+import { useProgress, type ThemePreference } from '@/features/progress/store';
 import { confirmAsync, notify } from '@/lib/confirm';
-import { haptic } from '@/lib/haptics';
+import { LANGUAGE_LABEL } from '@/lib/highlight';
 import { useColors } from '@/theme/theme-provider';
 import { radius, spacing } from '@/theme/tokens';
 
@@ -33,29 +30,9 @@ export default function SettingsScreen() {
   const restoreProgress = useProgress((s) => s.restoreProgress);
   const adPrivacyRequired = useAds((s) => s.privacyOptionsRequired);
   const [nickname, setNickname] = useState(profile.nickname);
-  const [runnerUrl, setRunnerUrl] = useState(settings.runnerUrl);
-  const [ping, setPing] = useState<{ loading: boolean; ok?: boolean; message?: string }>({ loading: false });
-
-  const saveRunner = async () => {
-    const url = runnerUrl.trim().replace(/\/+$/, '');
-    if (url && !/^https?:\/\//.test(url)) {
-      setPing({ loading: false, ok: false, message: 'http:// 또는 https:// 로 시작해야 해요.' });
-      return;
-    }
-    updateSettings({ runnerUrl: url });
-    setRunnerUrl(url);
-    if (!url) {
-      setPing({ loading: false, ok: undefined, message: '실행 서버 연결을 해제했어요.' });
-      return;
-    }
-    setPing({ loading: true });
-    const r = await pingRemote(url);
-    setPing({ loading: false, ok: r.ok, message: r.message });
-    haptic(r.ok ? 'success' : 'error');
-  };
 
   const reset = async () => {
-    const ok = await confirmAsync('학습 기록 초기화', '퀴즈 · 문제 · 카드 학습 기록과 북마크가 모두 삭제돼요. 프로필과 설정은 유지돼요.', '초기화', true);
+    const ok = await confirmAsync('학습 기록 초기화', '퀴즈 · 알고리즘 유형 · 코드 리뷰 · 카드 학습 기록과 북마크가 모두 삭제돼요. 프로필과 설정은 유지돼요.', '초기화', true);
     if (!ok) return;
     resetProgress();
     notify('초기화 완료', '학습 기록을 초기화했어요.');
@@ -63,7 +40,7 @@ export default function SettingsScreen() {
 
   const exportBackup = async () => {
     const fileName = backupFileName();
-    const text = JSON.stringify(createBackup(useProgress.getState(), useDrafts.getState()));
+    const text = JSON.stringify(createBackup(useProgress.getState()));
     const result = await saveBackupFile(text, fileName);
     if (result === 'downloaded') notify('백업 완료', `${fileName} 파일을 내려받았어요. Google Drive 같은 안전한 곳에 보관하세요.`);
   };
@@ -85,15 +62,7 @@ export default function SettingsScreen() {
     );
     if (!ok) return;
     restoreProgress(backup.progress);
-    if (backup.drafts) {
-      useDrafts.setState({
-        drafts: backup.drafts.drafts,
-        lastLanguage: backup.drafts.lastLanguage as Record<string, SolveLanguage>,
-      });
-    }
-    const next = useProgress.getState();
-    setNickname(next.profile.nickname);
-    setRunnerUrl(next.settings.runnerUrl);
+    setNickname(useProgress.getState().profile.nickname);
     notify('복원 완료', '학습 기록을 복원했어요.');
   };
 
@@ -125,8 +94,8 @@ export default function SettingsScreen() {
         </Field>
         <Field label="코딩 테스트 기본 언어">
           <View style={styles.chips}>
-            {SOLVE_LANGUAGES.map((l) => (
-              <Chip key={l.id} label={l.label} selected={profile.language === l.id} onPress={() => updateProfile({ language: l.id })} />
+            {SOLVE_LANGUAGE_IDS.map((l) => (
+              <Chip key={l} label={LANGUAGE_LABEL[l]} selected={profile.language === l} onPress={() => updateProfile({ language: l })} />
             ))}
           </View>
         </Field>
@@ -159,61 +128,12 @@ export default function SettingsScreen() {
             ]}
           />
         </Field>
-        <Field label={`코드 에디터 글자 크기 · ${settings.editorFontSize}`}>
-          <View style={styles.stepper}>
-            <Pressable
-              onPress={() => updateSettings({ editorFontSize: Math.max(11, settings.editorFontSize - 1) })}
-              style={[styles.stepBtn, { backgroundColor: c.surfaceAlt }]}
-              accessibilityLabel="글자 작게">
-              <Ionicons name="remove" size={20} color={c.text} />
-            </Pressable>
-            <Text variant="bodyStrong" style={{ minWidth: 36, textAlign: 'center' }}>
-              {settings.editorFontSize}
-            </Text>
-            <Pressable
-              onPress={() => updateSettings({ editorFontSize: Math.min(20, settings.editorFontSize + 1) })}
-              style={[styles.stepBtn, { backgroundColor: c.surfaceAlt }]}
-              accessibilityLabel="글자 크게">
-              <Ionicons name="add" size={20} color={c.text} />
-            </Pressable>
-          </View>
-        </Field>
         <View style={styles.switchRow}>
           <Text variant="body" style={{ flex: 1 }}>
             진동 피드백
           </Text>
           <Switch value={settings.haptics} onValueChange={(haptics) => updateSettings({ haptics })} />
         </View>
-      </Card>
-
-      <SectionHeader title="코드 실행 서버" subtitle="Java · Kotlin · C++ 채점용 (Python · JavaScript 는 기기에서 실행)" />
-      <Card style={{ gap: spacing.md }}>
-        <Text variant="caption" color="textSecondary">
-          오픈소스 코드 실행 엔진 Piston 서버 주소를 입력하세요. 저장소의 infra/runner 폴더에 무료 클라우드에 직접 띄우는 방법이 있어요.
-        </Text>
-        <TextInput
-          value={runnerUrl}
-          onChangeText={setRunnerUrl}
-          placeholder="https://runner.example.com"
-          placeholderTextColor={c.textTertiary}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
-        />
-        <Button title="저장하고 연결 확인" size="md" variant="secondary" loading={ping.loading} onPress={saveRunner} />
-        {!!ping.message && (
-          <View style={styles.pingRow}>
-            <Ionicons
-              name={ping.ok === undefined ? 'information-circle' : ping.ok ? 'checkmark-circle' : 'alert-circle'}
-              size={18}
-              color={ping.ok === undefined ? c.textTertiary : ping.ok ? c.success : c.danger}
-            />
-            <Text variant="caption" tint={ping.ok === undefined ? c.textTertiary : ping.ok ? c.success : c.danger} style={{ flex: 1 }}>
-              {ping.message}
-            </Text>
-          </View>
-        )}
       </Card>
 
       {Platform.OS === 'web' && (
@@ -260,7 +180,7 @@ export default function SettingsScreen() {
           </>
         )}
         <Divider />
-        <InfoRow label="오픈소스" value="Expo · CodeMirror · Pyodide" />
+        <InfoRow label="오픈소스" value="Expo · React Native" />
       </Card>
     </Screen>
   );
@@ -291,10 +211,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: 16 },
   chips: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  stepBtn: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   switchRow: { flexDirection: 'row', alignItems: 'center' },
-  pingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   backupRow: { flexDirection: 'row', gap: spacing.sm },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.lg, paddingVertical: spacing.lg },
 });

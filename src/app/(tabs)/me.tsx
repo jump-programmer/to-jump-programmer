@@ -13,8 +13,8 @@ import { Text } from '@/components/ui/text';
 import { REVIEW_FRAMEWORK_MAP } from '@/content';
 import { againCardIds, trackSummary, wrongQuestionIds } from '@/features/progress/selectors';
 import { useProgress } from '@/features/progress/store';
-import { SOLVE_LANGUAGE_MAP } from '@/features/runner/core/languages';
 import { computeBestStreak, computeStreak } from '@/lib/date';
+import { LANGUAGE_LABEL } from '@/lib/highlight';
 import { useColors } from '@/theme/theme-provider';
 import { radius, spacing } from '@/theme/tokens';
 
@@ -44,7 +44,7 @@ export default function MeTab() {
           </Text>
           <View style={styles.badges}>
             <Badge label={profile.goal === 'new' ? '신입 취업 준비' : '경력 이직 준비'} tone="primary" />
-            <Badge label={SOLVE_LANGUAGE_MAP[profile.language].label} />
+            <Badge label={LANGUAGE_LABEL[profile.language]} />
             <Badge label={REVIEW_FRAMEWORK_MAP[profile.framework].title} />
           </View>
         </View>

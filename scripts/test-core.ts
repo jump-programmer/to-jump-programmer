@@ -14,12 +14,11 @@ import {
   type DailyQuizInput,
 } from '../src/features/progress/daily-quiz';
 import type { ProgressData } from '../src/features/progress/store';
-import { resultsMatch } from '../src/features/runner/core/compare';
-import { parseHarnessOutput } from '../src/features/runner/core/protocol';
-import { signatureText, starterCode } from '../src/features/runner/core/languages';
 import { computeBestStreak, computeStreak, dayKey, seededRandom } from '../src/lib/date';
 import { diffLines, diffStats } from '../src/lib/diff';
 import { highlightLines } from '../src/lib/highlight';
+import { resultsMatch } from './lib/harness/compare';
+import { parseHarnessOutput } from './lib/harness/protocol';
 import { parseInline, parseMarkdown } from '../src/lib/markdown';
 
 let passed = 0;
@@ -91,18 +90,6 @@ test('케이스별 출력 분리 · 비정상 종료 감지', () => {
   assert.equal(r.crashedStdout, 'partial');
 });
 
-console.log('starter code');
-test('언어별 시작 코드', () => {
-  const sig = { params: [{ name: 'nums', type: 'int[]' as const }, { name: 'k', type: 'int' as const }], returns: 'string[]' as const };
-  assert.match(starterCode('python', sig), /^def solution\(nums, k\):/);
-  assert.match(starterCode('java', sig), /public String\[\] solution\(int\[\] nums, int k\)/);
-  assert.match(starterCode('kotlin', sig), /^class Solution \{\n {4}fun solution\(nums: IntArray, k: Int\): Array<String> \{/);
-  assert.match(starterCode('kotlin', sig), /var answer: Array<String> = arrayOf<String>\(\)/);
-  assert.equal(signatureText('kotlin', sig), 'fun solution(nums: IntArray, k: Int): Array<String>');
-  assert.match(starterCode('cpp', sig), /vector<string> solution\(vector<int> nums, int k\)/);
-  assert.match(starterCode('javascript', sig), /^function solution\(nums, k\)/);
-});
-
 console.log('highlight');
 test('키워드 · 문자열 · 주석 · 여러 줄 토큰', () => {
   const lines = highlightLines('def f():\n    """doc\n    string"""\n    return "x"  # c', 'python');
@@ -116,7 +103,7 @@ console.log('backup');
 test('학습 기록 백업 만들기 · 읽기', () => {
   const progress: ProgressData = {
     profile: { nickname: '점프', goal: 'new', language: 'kotlin', framework: 'spring', dailyGoal: 10, onboarded: true },
-    settings: { theme: 'dark', runnerUrl: '', editorFontSize: 15, haptics: true, reviewLanguage: { spring: 'kotlin' } },
+    settings: { theme: 'dark', haptics: true, reviewLanguage: { spring: 'kotlin' } },
     quiz: { q1: { attempts: 2, correct: 1, last: true, lastAt: 1 } },
     cards: {},
     problems: { p1: { solved: true, language: 'kotlin', bestPassed: 3, total: 3, submissions: 1, lastAt: 1 } },
@@ -128,11 +115,14 @@ test('학습 기록 백업 만들기 · 읽기', () => {
     daily: null,
   } as ProgressData;
   const now = new Date(2026, 9, 10, 9, 0);
-  const file = createBackup(progress, { drafts: { 'p1:kotlin': 'class Solution {}' }, lastLanguage: { p1: 'kotlin' } }, now);
+  const file = createBackup(progress, now);
   const parsed = parseBackup(JSON.stringify(file));
   assert.ok(parsed.ok);
   assert.deepEqual(parsed.backup.progress, progress);
-  assert.equal(parsed.backup.drafts?.drafts['p1:kotlin'], 'class Solution {}');
+  assert.equal(parsed.backup.drafts, undefined);
+  // 이전 버전 백업(작성 중인 코드 포함)도 읽을 수 있다
+  const old = { ...file, drafts: { drafts: { 'p1:kotlin': 'class Solution {}' }, lastLanguage: { p1: 'kotlin' } } };
+  assert.ok(parseBackup(JSON.stringify(old)).ok);
   assert.equal(backupFileName(now), 'to-jump-backup-2026-10-10.json');
   assert.match(describeBackup(parsed.backup), /학습한 날 2일 · 퀴즈 1문항 · 알고리즘 유형 1개/);
 });
