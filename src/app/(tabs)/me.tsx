@@ -93,6 +93,12 @@ export default function MeTab() {
           right={`${summary.review.challengesDone}/${summary.review.challenges}`}
         />
         <TrackRow
+          title="CS 이론 학습"
+          color={c.cs}
+          value={summary.cs.lessons ? summary.cs.lessonsDone / summary.cs.lessons : 0}
+          right={`${summary.cs.lessonsDone}/${summary.cs.lessons}`}
+        />
+        <TrackRow
           title="CS 퀴즈"
           color={c.cs}
           value={summary.cs.quiz.progress}

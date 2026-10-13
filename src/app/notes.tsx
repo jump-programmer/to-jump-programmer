@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Chip, EmptyState } from '@/components/ui/misc';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
-import { ALGO_TOPIC_MAP, CS_CATEGORY_MAP, QUESTION_MAP, QUESTION_SOURCE } from '@/content';
+import { ALGO_TOPIC_MAP, CS_CATEGORY_MAP, LESSON_MAP, QUESTION_MAP, QUESTION_SOURCE } from '@/content';
 import { wrongQuestionIds } from '@/features/progress/selectors';
 import { useProgress } from '@/features/progress/store';
 import { useColors } from '@/theme/theme-provider';
@@ -83,12 +83,25 @@ export default function NotesScreen() {
                 <View style={{ gap: spacing.sm }}>
                   <Inline text={`정답: ${answer}`} variant="captionStrong" color={c.success} />
                   <RichText text={q.explanation} variant="caption" />
-                  <Button
-                    title="이 문제만 다시 풀기"
-                    size="sm"
-                    variant="secondary"
-                    onPress={() => router.push({ pathname: '/quiz', params: { mode: 'ids', ids: id, title: '오답 다시 풀기' } })}
-                  />
+                  <View style={styles.actions}>
+                    {q.lessonId && LESSON_MAP[q.lessonId] && (
+                      <Button
+                        title="관련 이론 보기"
+                        icon="book-outline"
+                        size="sm"
+                        variant="secondary"
+                        style={{ flex: 1 }}
+                        onPress={() => router.push(`/interview/lesson/${q.lessonId}`)}
+                      />
+                    )}
+                    <Button
+                      title="이 문제만 다시 풀기"
+                      size="sm"
+                      variant="secondary"
+                      style={{ flex: 1 }}
+                      onPress={() => router.push({ pathname: '/quiz', params: { mode: 'ids', ids: id, title: '오답 다시 풀기' } })}
+                    />
+                  </View>
                 </View>
               )}
             </Card>
@@ -102,4 +115,5 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
   chips: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  actions: { flexDirection: 'row', gap: spacing.sm },
 });

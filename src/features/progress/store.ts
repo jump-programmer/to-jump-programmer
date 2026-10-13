@@ -13,12 +13,13 @@ import type {
 } from '@/content/types';
 import { dayKey } from '@/lib/date';
 
+import type { LessonRecord } from './lessons';
 import { migrateProgress, PROGRESS_VERSION } from './migrate';
 
 export type CareerGoal = 'new' | 'career';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type CardRating = 'again' | 'hard' | 'good';
-export type BookmarkKind = 'question' | 'card' | 'problem' | 'pattern' | 'challenge' | 'algoPattern';
+export type BookmarkKind = 'question' | 'card' | 'problem' | 'pattern' | 'challenge' | 'algoPattern' | 'lesson';
 
 export interface Profile {
   nickname: string;
@@ -41,6 +42,8 @@ export interface Settings {
   reviewLanguage: Partial<Record<FrameworkId, CodeLanguage>>;
   /** 풀스택 코스의 코드 리뷰 탭에서 마지막으로 본 쪽 */
   reviewSide?: TrackSide;
+  /** CS 이론 레슨 본문 글자 크기 */
+  lessonTextSize?: 'md' | 'lg';
 }
 
 export interface QuizRecord {
@@ -88,6 +91,8 @@ export interface DailyPlanRecord {
   framework?: FrameworkId;
   /** 오늘 공부할 알고리즘 유형 */
   algoPatternId?: string;
+  /** 오늘 읽을 CS 이론 레슨 */
+  lessonId?: string;
   /** 이전 버전의 오늘의 코딩 문제 (더 이상 쓰지 않음) */
   problemId?: string;
   cardId?: string;
@@ -106,6 +111,8 @@ export interface ProgressData {
   challenges: Record<string, ChallengeRecord>;
   /** 알고리즘 문제 유형 id → 학습 완료 시각 */
   algoPatterns: Record<string, number>;
+  /** CS 이론 레슨 id → 읽기 · 확인 퀴즈 기록 */
+  lessons: Record<string, LessonRecord>;
   bookmarks: Record<string, { kind: BookmarkKind; at: number }>;
   /** YYYY-MM-DD → 학습 횟수 */
   activity: Record<string, number>;
@@ -121,6 +128,12 @@ interface ProgressActions {
   rateCard: (id: string, rating: CardRating) => void;
   markPatternRead: (id: string) => void;
   markAlgoPatternRead: (id: string) => void;
+  /** 레슨을 열었다 (처음이면 '읽는 중') */
+  startLesson: (id: string) => void;
+  /** 레슨을 끝까지 읽었다 */
+  finishLessonReading: (id: string) => void;
+  /** 확인 퀴즈를 제출했다 — 레슨 완료 */
+  recordLessonCheck: (id: string, correct: number, total: number) => void;
   recordChallenge: (id: string, score: number, note?: string) => void;
   toggleBookmark: (id: string, kind: BookmarkKind) => void;
   setDaily: (plan: DailyPlanRecord) => void;
@@ -155,6 +168,7 @@ const EMPTY_PROGRESS = {
   patterns: {},
   challenges: {},
   algoPatterns: {},
+  lessons: {},
   bookmarks: {},
   activity: {},
   daily: null,
@@ -216,6 +230,32 @@ export const useProgress = create<ProgressState>()(
             : { algoPatterns: { ...s.algoPatterns, [id]: Date.now() }, activity: bumpActivity(s.activity) },
         ),
 
+      startLesson: (id) =>
+        set((s) => {
+          const prev = s.lessons[id] as LessonRecord | undefined;
+          const now = Date.now();
+          return { lessons: { ...s.lessons, [id]: { ...prev, startedAt: prev?.startedAt ?? now, lastAt: now } } };
+        }),
+
+      finishLessonReading: (id) =>
+        set((s) => {
+          const prev = s.lessons[id] as LessonRecord | undefined;
+          if (prev?.readAt) return {};
+          const now = Date.now();
+          return {
+            lessons: { ...s.lessons, [id]: { ...prev, startedAt: prev?.startedAt ?? now, readAt: now, lastAt: now } },
+            activity: bumpActivity(s.activity),
+          };
+        }),
+
+      recordLessonCheck: (id, correct, total) =>
+        set((s) => {
+          const prev = s.lessons[id] as LessonRecord | undefined;
+          const now = Date.now();
+          const rec = { ...prev, startedAt: prev?.startedAt ?? now, readAt: prev?.readAt ?? now };
+          return { lessons: { ...s.lessons, [id]: { ...rec, completedAt: now, correct, total, lastAt: now } } };
+        }),
+
       recordChallenge: (id, score, note) =>
         set((s) => {
           const prev = s.challenges[id];
@@ -264,7 +304,7 @@ export const useProgress = create<ProgressState>()(
       onRehydrateStorage: () => (_state, error) => {
         if (error) void AsyncStorage.removeItem('tj-progress').catch(() => {});
       },
-      partialize: ({ profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, bookmarks, activity, daily }) => ({
+      partialize: ({ profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, lessons, bookmarks, activity, daily }) => ({
         profile,
         settings,
         quiz,
@@ -273,6 +313,7 @@ export const useProgress = create<ProgressState>()(
         patterns,
         challenges,
         algoPatterns,
+        lessons,
         bookmarks,
         activity,
         daily,

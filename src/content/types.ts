@@ -55,6 +55,8 @@ interface QuestionBase {
   /** 해설 (RichText) — 정답 이유 + 오답 선택지가 틀린 이유 */
   explanation: RichText;
   tags?: string[];
+  /** 이 문제가 다루는 CS 이론 레슨 id (같은 카테고리). 레슨의 확인 퀴즈가 되고, 해설에서 레슨으로 이동할 수 있다 */
+  lessonId?: string;
 }
 
 /** 4지선다(2~5지) 객관식 */
@@ -115,8 +117,27 @@ export interface CsCategory {
 
 /** 카테고리별 콘텐츠 파일(src/content/cs/<id>.ts)이 export 하는 형태 */
 export interface CsCategoryContent {
+  /** 이론 학습 레슨 (순서대로) — 없으면 이론 탭에서 '준비 중' */
+  lessons?: CsLesson[];
   quiz: QuizQuestion[];
   cards: InterviewCard[];
+}
+
+/** CS 이론 학습 레슨 — 읽은 뒤 이 레슨에 연결된 퀴즈(QuizQuestion.lessonId)로 확인한다 */
+export interface CsLesson {
+  /** 전역 유일 ID. 예: 'cs-os-l01' */
+  id: string;
+  categoryId: string;
+  title: string;
+  /** 한두 문장 요약 (인라인 RichText) */
+  summary: string;
+  difficulty: Difficulty;
+  /** 예상 읽기 시간 (분, 3~7) */
+  minutes: number;
+  /** 본문 (RichText, '###' 섹션: 왜 필요한가 → 핵심 개념 → 예시 · 코드 → 면접 포인트) */
+  body: RichText;
+  /** 핵심 정리 (인라인 RichText, 3~5개) */
+  keyPoints: string[];
 }
 
 /* ------------------------------------------------------------------ */

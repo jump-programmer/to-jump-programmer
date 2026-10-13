@@ -11,6 +11,8 @@ import {
   ALGO_TOPIC_MAP,
   CARD_MAP,
   CHALLENGE_MAP,
+  CS_CATEGORY_MAP,
+  LESSON_MAP,
   PATTERN_MAP,
   QUESTION_MAP,
   resolveChallenge,
@@ -30,10 +32,11 @@ export default function BookmarksScreen() {
   const questions = entries.filter(([id]) => QUESTION_MAP[id]).map(([id]) => id);
   const cards = entries.filter(([id]) => CARD_MAP[id]).map(([id]) => id);
   const algoPatterns = entries.filter(([id]) => ALGO_PATTERN_MAP[id]).map(([id]) => id);
+  const lessons = entries.filter(([id]) => LESSON_MAP[id]).map(([id]) => id);
   const patterns = entries.filter(([id]) => PATTERN_MAP[id]).map(([id]) => id);
   const challenges = entries.filter(([id]) => CHALLENGE_MAP[id]).map(([id]) => id);
   const empty =
-    !questions.length && !cards.length && !algoPatterns.length && !patterns.length && !challenges.length;
+    !questions.length && !cards.length && !lessons.length && !algoPatterns.length && !patterns.length && !challenges.length;
 
   return (
     <Screen>
@@ -42,7 +45,7 @@ export default function BookmarksScreen() {
         <EmptyState
           icon="bookmark-outline"
           title="북마크가 없어요"
-          description="퀴즈, 면접 카드, 알고리즘 유형, 리뷰 패턴 화면의 북마크 아이콘을 눌러 저장해보세요."
+          description="퀴즈, CS 이론, 면접 카드, 알고리즘 유형, 리뷰 패턴 화면의 북마크 아이콘을 눌러 저장해보세요."
         />
       )}
 
@@ -87,6 +90,22 @@ export default function BookmarksScreen() {
             style={{ marginBottom: spacing.md }}
             onPress={() => router.push({ pathname: '/cards', params: { ids: cards.join(','), title: '북마크 질문' } })}
           />
+        </Section>
+      )}
+
+      {lessons.length > 0 && (
+        <Section title="CS 이론" count={lessons.length}>
+          {lessons.map((id, i) => (
+            <View key={id}>
+              {i > 0 && <Divider />}
+              <ListRow
+                title={LESSON_MAP[id].title}
+                subtitle={CS_CATEGORY_MAP[LESSON_MAP[id].categoryId]?.title}
+                left={<IconBadge name="book" color={c.cs} background={c.csSoft} size={32} />}
+                onPress={() => router.push(`/interview/lesson/${id}`)}
+              />
+            </View>
+          ))}
         </Section>
       )}
 

@@ -26,19 +26,19 @@ export interface BackupFile {
 
 export type ParsedBackup = { ok: true; backup: BackupFile } | { ok: false; error: string };
 
-const RECORD_KEYS = ['quiz', 'cards', 'problems', 'patterns', 'challenges', 'algoPatterns', 'bookmarks', 'activity'] as const;
+const RECORD_KEYS = ['quiz', 'cards', 'problems', 'patterns', 'challenges', 'algoPatterns', 'lessons', 'bookmarks', 'activity'] as const;
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 export function createBackup(progress: ProgressData, now = new Date()): BackupFile {
-  const { profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, bookmarks, activity, daily } = progress;
+  const { profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, lessons, bookmarks, activity, daily } = progress;
   return {
     app: BACKUP_APP,
     format: BACKUP_FORMAT,
     exportedAt: now.toISOString(),
-    progress: { profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, bookmarks, activity, daily },
+    progress: { profile, settings, quiz, cards, problems, patterns, challenges, algoPatterns, lessons, bookmarks, activity, daily },
   };
 }
 
@@ -104,6 +104,7 @@ export function describeBackup(b: BackupFile): string {
     `학습한 날 ${count(b.progress.activity)}일`,
     `퀴즈 ${count(b.progress.quiz)}문항`,
     `알고리즘 유형 ${count(b.progress.algoPatterns)}개`,
+    `CS 이론 ${count(b.progress.lessons)}개`,
     `면접 카드 ${count(b.progress.cards)}장`,
   ];
   return parts.join(' · ');

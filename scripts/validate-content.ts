@@ -28,6 +28,7 @@ import type {
   CodeSnippet,
   CompareMode,
   CsCategoryContent,
+  CsLesson,
   InterviewCard,
   QuizQuestion,
   ReviewChallenge,
@@ -255,6 +256,35 @@ async function importDefault<T>(file: string): Promise<T | null> {
   return (mod.default ?? null) as T | null;
 }
 
+/** 레슨 구조와 퀴즈 연결 — 레슨마다 확인 퀴즈 3개 이상, 퀴즈의 lessonId 는 같은 카테고리의 레슨 */
+function checkLessons(lessons: CsLesson[], quiz: QuizQuestion[], categoryId: string, where: string) {
+  const ids = new Set<string>();
+  lessons.forEach((l, i) => {
+    const w = `${where}/${l?.id}`;
+    checkId(l.id, w);
+    ids.add(l.id);
+    if (!new RegExp(`^cs-${categoryId}-l\\d{2}$`).test(l.id)) err(w, `레슨 id 는 'cs-${categoryId}-l01' 형식 (${i + 1}번째)`);
+    if (l.categoryId !== categoryId) err(w, `categoryId 가 '${categoryId}' 이어야 합니다`);
+    if (![1, 2, 3].includes(l.difficulty)) err(w, 'difficulty 는 1|2|3');
+    nonEmpty(l.title, w, 'title', 2);
+    nonEmpty(l.summary, w, 'summary', 10) && checkInline(l.summary, w, 'summary');
+    if (!Number.isInteger(l.minutes) || l.minutes < 2 || l.minutes > 10) err(w, 'minutes 는 2~10 정수');
+    checkRich(l.body, w, 'body', 600);
+    if (typeof l.body === 'string' && !/^###\s/m.test(l.body)) warn(w, "body 에 '###' 섹션 제목이 없습니다");
+    if (!Array.isArray(l.keyPoints) || l.keyPoints.length < 3 || l.keyPoints.length > 6) err(w, 'keyPoints 는 3~6개');
+    l.keyPoints?.forEach((k, j) => nonEmpty(k, w, `keyPoints[${j}]`, 5) && checkInline(k, w, `keyPoints[${j}]`));
+    const linked = quiz.filter((q) => q.lessonId === l.id).length;
+    if (linked < 3) err(w, `확인 퀴즈(lessonId 로 연결된 문제)가 ${linked}개입니다 — 3개 이상 필요`);
+  });
+  for (const q of quiz) {
+    if (q.lessonId && !ids.has(q.lessonId)) err(`${where}/${q.id}`, `lessonId '${q.lessonId}' 레슨이 이 카테고리에 없습니다`);
+  }
+  if (lessons.length) {
+    const unlinked = quiz.filter((q) => !q.lessonId).length;
+    if (unlinked) warn(where, `레슨에 연결되지 않은 퀴즈가 ${unlinked}개 있습니다 (해설에서 이론으로 이동할 수 없음)`);
+  }
+}
+
 async function validateCs() {
   for (const cat of CS_CATEGORIES.filter((c) => !ONLY || ONLY.includes(c.id))) {
     const file = join(CONTENT, 'cs', `${cat.id}.ts`);
@@ -270,7 +300,10 @@ async function validateCs() {
     }
     content.quiz.forEach((q) => checkQuestion(q, cat.id, where));
     content.cards.forEach((c) => checkCard(c, cat.id, where));
-    console.log(`  cs/${cat.id}: 퀴즈 ${content.quiz.length} · 카드 ${content.cards.length}`);
+    const lessons = content.lessons ?? [];
+    if (!Array.isArray(lessons)) err(where, 'lessons 는 배열이어야 합니다');
+    else checkLessons(lessons, content.quiz, cat.id, where);
+    console.log(`  cs/${cat.id}: 이론 ${lessons.length} · 퀴즈 ${content.quiz.length} · 카드 ${content.cards.length}`);
   }
 }
 
