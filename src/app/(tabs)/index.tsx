@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { InstallAppCard } from '@/components/install-app-card';
+import { LessonStatusBadge } from '@/components/lesson-status-badge';
 import { Inline } from '@/components/rich-text';
 import { Badge, DifficultyBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import {
   CARD_MAP,
   CHALLENGE_MAP,
   CS_CATEGORY_MAP,
+  LESSON_MAP,
   PATTERN_MAP,
   resolveChallenge,
   resolvePattern,
@@ -65,6 +67,7 @@ export default function Home() {
 
   const algoPattern = plan.algoPatternId ? ALGO_PATTERN_MAP[plan.algoPatternId] : undefined;
   const card = plan.cardId ? CARD_MAP[plan.cardId] : undefined;
+  const lesson = plan.lessonId ? LESSON_MAP[plan.lessonId] : undefined;
   const review = pickReview(state);
   const reviewLanguage = useReviewLanguageMap();
   const reviewItem = !review
@@ -189,6 +192,24 @@ export default function Home() {
             <Ionicons name="chevron-forward" size={18} color={c.textTertiary} />
           </Card>
         )}
+        {lesson && (
+          <Card onPress={() => router.push(`/interview/lesson/${lesson.id}`)} style={styles.recCard}>
+            <IconBadge name="book" color={c.cs} background={c.csSoft} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text variant="small" tint={c.cs} weight="700">
+                오늘의 CS 이론 · {CS_CATEGORY_MAP[lesson.categoryId]?.title}
+              </Text>
+              <Text variant="bodyStrong" numberOfLines={1}>
+                {lesson.title}
+              </Text>
+              <View style={styles.badges}>
+                <LessonStatusBadge lessonId={lesson.id} />
+                <Badge label={`${lesson.minutes}분 읽기 · 확인 퀴즈`} />
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={c.textTertiary} />
+          </Card>
+        )}
         {card && (
           <Card onPress={() => router.push({ pathname: '/cards', params: { ids: card.id, title: '오늘의 면접 질문' } })} style={styles.recCard}>
             <IconBadge name="chatbubbles" color={c.cs} background={c.csSoft} />
@@ -229,7 +250,7 @@ export default function Home() {
           color={c.cs}
           soft={c.csSoft}
           value={progress.cs}
-          detail={`퀴즈 ${summary.cs.quiz.attempted}/${summary.cs.quiz.total} · 질문 카드 ${summary.cs.cardsReviewed}/${summary.cs.cards}`}
+          detail={`이론 ${summary.cs.lessonsDone}/${summary.cs.lessons} · 퀴즈 ${summary.cs.quiz.attempted}/${summary.cs.quiz.total} · 카드 ${summary.cs.cardsReviewed}/${summary.cs.cards}`}
           onPress={() => router.push('/interview')}
         />
       </View>

@@ -4,13 +4,17 @@
  */
 import type { ProgressData } from './store';
 
-export const PROGRESS_VERSION = 2;
+export const PROGRESS_VERSION = 3;
 
 export function migrateProgress(persisted: unknown, version: number): Partial<ProgressData> {
   const data = { ...((persisted ?? {}) as Partial<ProgressData>) };
   if (version < 2) {
     // v2: 개발자 코스 — 기존 사용자는 백엔드 코스로 두고, 프론트엔드 프레임워크는 기본값으로 채운다
     data.profile = { track: 'backend', frontendFramework: 'react', ...data.profile } as ProgressData['profile'];
+  }
+  if (version < 3) {
+    // v3: CS 이론 레슨 기록
+    data.lessons ??= {};
   }
   return data;
 }

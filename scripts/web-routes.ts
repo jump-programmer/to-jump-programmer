@@ -5,12 +5,12 @@
  * - GitHub Pages 는 없는 경로에 404.html 을 404 상태 코드로 내려 준다. 앱은 그대로 열리지만 검색 엔진 · AdSense
  *   크롤러는 404 페이지를 색인하지 않으므로, 콘텐츠 화면마다 <경로>/index.html 로 앱 셸을 복사해 200 으로 열리게 한다.
  * - 사이트 주소를 주면 같은 경로 목록으로 sitemap.xml 을 만든다.
- * 온보딩 없이 열리는 화면(탭 · 토픽 · 알고리즘 유형 · 개선 패턴 · 리뷰 퀴즈 · 면접 카테고리 · 개인정보 처리방침)만 넣는다.
+ * 온보딩 없이 열리는 화면(탭 · 토픽 · 알고리즘 유형 · 개선 패턴 · 리뷰 퀴즈 · 면접 카테고리 · CS 이론 · 개인정보 처리방침)만 넣는다.
  */
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { ALL_ALGO_PATTERNS, CHALLENGE_MAP, PATTERN_MAP } from '../src/content';
+import { ALL_ALGO_PATTERNS, ALL_LESSONS, CHALLENGE_MAP, PATTERN_MAP } from '../src/content';
 import { ALGO_TOPICS } from '../src/content/algorithm/topics';
 import { CS_CATEGORIES } from '../src/content/cs/categories';
 
@@ -29,6 +29,7 @@ const paths = [
   ...Object.keys(PATTERN_MAP).map((id) => `review/pattern/${id}`),
   ...Object.keys(CHALLENGE_MAP).map((id) => `review/challenge/${id}`),
   ...CS_CATEGORIES.map((c) => `interview/${c.id}`),
+  ...ALL_LESSONS.map((l) => `interview/lesson/${l.id}`),
   'privacy',
 ];
 

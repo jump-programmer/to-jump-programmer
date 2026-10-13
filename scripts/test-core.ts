@@ -4,7 +4,15 @@
  */
 import assert from 'node:assert/strict';
 
-import { CS_CATEGORIES, CS_CATEGORY_MAP, FRAMEWORK_LANGUAGE_CATEGORIES, QUESTION_MAP, QUESTION_SOURCE } from '../src/content';
+import {
+  ALL_LESSONS,
+  CS_CATEGORIES,
+  CS_CATEGORY_MAP,
+  FRAMEWORK_LANGUAGE_CATEGORIES,
+  LESSON_QUESTION_IDS,
+  QUESTION_MAP,
+  QUESTION_SOURCE,
+} from '../src/content';
 import { backupFileName, createBackup, describeBackup, parseBackup } from '../src/features/progress/backup';
 import {
   csCategoriesForCourse,
@@ -16,6 +24,14 @@ import {
   type Course,
 } from '../src/features/progress/course';
 import { composeDailyQuiz, dailyQuizQuota, type DailyQuizInput } from '../src/features/progress/daily-quiz';
+import {
+  categoryLessons,
+  isLessonUnderstood,
+  lessonStatus,
+  nextLessonCandidates,
+  pickLessonCheck,
+  type LessonRecord,
+} from '../src/features/progress/lessons';
 import { migrateProgress } from '../src/features/progress/migrate';
 import type { ProgressData } from '../src/features/progress/store';
 import { computeBestStreak, computeStreak, dayKey, seededRandom } from '../src/lib/date';
@@ -137,6 +153,7 @@ test('학습 기록 백업 만들기 · 읽기', () => {
     patterns: {},
     challenges: {},
     algoPatterns: { 'binary-search-lower-bound': 1 },
+    lessons: { 'cs-os-l01': { startedAt: 1, readAt: 2, completedAt: 3, correct: 2, total: 3, lastAt: 3 } },
     bookmarks: {},
     activity: { '2026-10-09': 3, '2026-10-10': 1 },
     daily: null,
@@ -151,7 +168,7 @@ test('학습 기록 백업 만들기 · 읽기', () => {
   const old = { ...file, drafts: { drafts: { 'p1:kotlin': 'class Solution {}' }, lastLanguage: { p1: 'kotlin' } } };
   assert.ok(parseBackup(JSON.stringify(old)).ok);
   assert.equal(backupFileName(now), 'to-jump-backup-2026-10-10.json');
-  assert.match(describeBackup(parsed.backup), /학습한 날 2일 · 퀴즈 1문항 · 알고리즘 유형 1개/);
+  assert.match(describeBackup(parsed.backup), /학습한 날 2일 · 퀴즈 1문항 · 알고리즘 유형 1개 · CS 이론 1개/);
 });
 test('잘못된 백업 파일은 거절', () => {
   const ok = { app: 'to-jump-programmer', format: 1, exportedAt: '', progress: { profile: {}, settings: {} } };
@@ -302,15 +319,56 @@ test('코스별 코딩 테스트 언어 순서', () => {
   assert.equal(solveLanguagesFor('frontend').length, 5);
   assert.equal(solveLanguagesFor('backend')[0], 'python');
 });
-test('이전 버전 학습 기록은 백엔드 코스로 옮김', () => {
+test('이전 버전 학습 기록 옮기기 (v1 → 백엔드 코스, v2 → 레슨 기록)', () => {
   const old = { profile: { nickname: '점프', framework: 'django', language: 'java' }, quiz: { q1: { attempts: 1 } } };
   const migrated = migrateProgress(old, 1);
   assert.equal(migrated.profile?.track, 'backend');
   assert.equal(migrated.profile?.frontendFramework, 'react');
   assert.equal(migrated.profile?.framework, 'django');
   assert.deepEqual(migrated.quiz, old.quiz);
-  const current = { profile: { track: 'frontend', frontendFramework: 'vue' } };
-  assert.deepEqual(migrateProgress(current, 2), current);
+  assert.deepEqual(migrated.lessons, {}); // v3: 레슨 기록
+  const v2 = { profile: { track: 'frontend', frontendFramework: 'vue' } };
+  assert.deepEqual(migrateProgress(v2, 2), { ...v2, lessons: {} });
+  const current = { ...v2, lessons: { 'cs-os-l01': { startedAt: 1, lastAt: 1 } } };
+  assert.deepEqual(migrateProgress(current, 3), current);
+});
+
+console.log('lessons');
+test('레슨 상태: 안 읽음 → 읽는 중 → 완료, 2/3 이상이면 이해함', () => {
+  assert.equal(lessonStatus(undefined), 'new');
+  assert.equal(lessonStatus({ startedAt: 1, lastAt: 1 }), 'reading');
+  assert.equal(lessonStatus({ startedAt: 1, readAt: 2, lastAt: 2 }), 'reading');
+  const done = (correct: number, total: number): LessonRecord => ({ startedAt: 1, completedAt: 3, correct, total, lastAt: 3 });
+  assert.equal(lessonStatus(done(0, 3)), 'done');
+  assert.equal(isLessonUnderstood(done(2, 3)), true);
+  assert.equal(isLessonUnderstood(done(1, 3)), false);
+  assert.equal(isLessonUnderstood(done(2, 2)), true);
+  assert.equal(isLessonUnderstood({ startedAt: 1, lastAt: 1 }), false);
+});
+test('레슨마다 확인 퀴즈 3개 이상이 연결되고, 안 푼 문제를 먼저 3개 고름', () => {
+  for (const l of ALL_LESSONS) assert.ok((LESSON_QUESTION_IDS[l.id]?.length ?? 0) >= 3, `${l.id}: 확인 퀴즈 부족`);
+  const lesson = ALL_LESSONS.find((l) => (LESSON_QUESTION_IDS[l.id]?.length ?? 0) >= 4);
+  if (!lesson) return;
+  const ids = LESSON_QUESTION_IDS[lesson.id];
+  const seen = new Set(ids.slice(0, ids.length - 3));
+  const picked = pickLessonCheck(lesson.id, (id) => seen.has(id), seededRandom(3));
+  assert.equal(picked.length, 3);
+  assert.equal(new Set(picked).size, 3);
+  assert.ok(picked.every((id) => !seen.has(id))); // 안 푼 문제가 3개 있으면 그것만
+  assert.ok(picked.every((id) => QUESTION_MAP[id].lessonId === lesson.id));
+});
+test('오늘 읽을 레슨: 카테고리마다 다음 레슨, 읽다 만 레슨이 있으면 그것', () => {
+  const cat = CS_CATEGORIES.find((c) => categoryLessons(c.id).length >= 2);
+  if (!cat) return;
+  const [first, second] = categoryLessons(cat.id);
+  assert.equal(nextLessonCandidates([cat], {})[0].id, first.id);
+  const records: Record<string, LessonRecord> = { [first.id]: { startedAt: 1, completedAt: 2, total: 3, correct: 3, lastAt: 2 } };
+  assert.equal(nextLessonCandidates([cat], records)[0].id, second.id);
+  const other = CS_CATEGORIES.find((c) => c.id !== cat.id && categoryLessons(c.id).length > 0);
+  if (other) {
+    const reading = { ...records, [second.id]: { startedAt: 3, lastAt: 3 } };
+    assert.deepEqual(nextLessonCandidates([cat, other], reading).map((l) => l.id), [second.id]);
+  }
 });
 
 console.log('date');

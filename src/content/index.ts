@@ -55,6 +55,7 @@ import type {
   AlgoTopicContent,
   CodeLanguage,
   CsCategoryContent,
+  CsLesson,
   FrameworkId,
   InterviewCard,
   QuizQuestion,
@@ -225,6 +226,15 @@ for (const fw of Object.values(REVIEW_CONTENT)) {
   for (const ch of fw.challenges) CHALLENGE_MAP[ch.id] = ch;
 }
 
+/** CS 이론 레슨 — 카테고리 순 → 카테고리 안의 순서 */
+export const ALL_LESSONS: CsLesson[] = CS_CATEGORIES.flatMap((cat) => CS_CONTENT[cat.id]?.lessons ?? []);
+export const LESSON_MAP: Record<string, CsLesson> = Object.fromEntries(ALL_LESSONS.map((l) => [l.id, l]));
+/** 레슨 id → 연결된 확인 퀴즈 id (QuizQuestion.lessonId) */
+export const LESSON_QUESTION_IDS: Record<string, string[]> = {};
+for (const q of Object.values(QUESTION_MAP)) {
+  if (q.lessonId && LESSON_MAP[q.lessonId]) (LESSON_QUESTION_IDS[q.lessonId] ??= []).push(q.id);
+}
+
 export const ALL_QUESTION_IDS = Object.keys(QUESTION_MAP);
 export const ALL_CARD_IDS = Object.keys(CARD_MAP);
 
@@ -233,6 +243,7 @@ export const CONTENT_STATS = {
   algoPatterns: ALL_ALGO_PATTERNS.length,
   csQuestions: CS_CATEGORIES.reduce((n, c) => n + (CS_CONTENT[c.id]?.quiz.length ?? 0), 0),
   cards: ALL_CARD_IDS.length,
+  lessons: ALL_LESSONS.length,
   patterns: Object.keys(PATTERN_MAP).length,
   challenges: Object.keys(CHALLENGE_MAP).length,
 };

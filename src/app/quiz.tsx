@@ -18,11 +18,13 @@ import {
   ALGO_TOPIC_MAP,
   CS_CATEGORY_MAP,
   CS_CONTENT,
+  LESSON_MAP,
   QUESTION_MAP,
   QUESTION_SOURCE,
   type QuizQuestion,
 } from '@/content';
 import { AdSlot, showInterstitialAtBreak } from '@/features/ads';
+import { pickLessonCheck } from '@/features/progress/lessons';
 import { wrongQuestionIds } from '@/features/progress/selectors';
 import { useProgress } from '@/features/progress/store';
 import { formatDuration, shuffle } from '@/lib/date';
@@ -43,6 +45,12 @@ function resolveQuestions(p: Params): { ids: string[]; title: string } {
     case 'cs': {
       const ids = (CS_CONTENT[p.id ?? '']?.quiz ?? []).map((q) => q.id);
       return { ids, title: p.title ?? `${CS_CATEGORY_MAP[p.id ?? '']?.title ?? ''} 퀴즈` };
+    }
+    case 'lesson': {
+      // 레슨 확인 퀴즈 — 레슨에 연결된 문제 중 안 푼 문제 먼저 3개
+      const lesson = LESSON_MAP[p.id ?? ''];
+      const ids = lesson ? pickLessonCheck(lesson.id, (id) => !!state.quiz[id]) : [];
+      return { ids, title: p.title ?? `${lesson?.title ?? ''} 확인 퀴즈` };
     }
     case 'wrong': {
       const filter = p.id ? (id: string) => QUESTION_MAP[id]?.categoryId === p.id : undefined;
@@ -96,6 +104,8 @@ export default function QuizScreen() {
   }, []);
 
   const recordQuiz = useProgress((s) => s.recordQuiz);
+  const recordLessonCheck = useProgress((s) => s.recordLessonCheck);
+  const lessonCheckId = params.mode === 'lesson' && LESSON_MAP[params.id ?? ''] ? params.id : undefined;
   const bookmarks = useProgress((s) => s.bookmarks);
   const toggleBookmark = useProgress((s) => s.toggleBookmark);
 
@@ -118,6 +128,8 @@ export default function QuizScreen() {
     if (index + 1 >= ids.length) {
       setElapsedMs(elapsedSince(startedAt.current));
       setFinished(true);
+      // 확인 퀴즈를 처음 제출하면 레슨 완료로 기록한다 (틀린 문제 다시 풀기 회차는 제외)
+      if (lessonCheckId && round === 1) recordLessonCheck(lessonCheckId, ids.filter((id) => results[id]).length, ids.length);
       return;
     }
     setIndex(index + 1);
@@ -171,14 +183,17 @@ export default function QuizScreen() {
                   오답노트에 자동으로 저장했어요. 다시 맞히면 오답노트에서 빠져요.
                 </Text>
                 {wrongIds.map((id) => (
-                  <WrongItem key={id} question={QUESTION_MAP[id]} />
+                  <WrongItem key={id} question={QUESTION_MAP[id]} showLesson={!lessonCheckId} />
                 ))}
               </View>
             )}
           </View>
         </ScrollView>
         <Footer>
-          {wrongIds.length > 0 && (
+          {lessonCheckId && (
+            <Button title="이론 다시 보기" icon="book-outline" variant="secondary" style={{ flex: 1 }} onPress={close} />
+          )}
+          {!lessonCheckId && wrongIds.length > 0 && (
             <Button
               title="틀린 문제 다시 풀기"
               variant="secondary"
@@ -263,6 +278,9 @@ export default function QuizScreen() {
                   해설
                 </Text>
                 <RichText text={q.explanation} variant="callout" />
+                {q.lessonId && LESSON_MAP[q.lessonId] && q.lessonId !== lessonCheckId && (
+                  <LessonLink lessonId={q.lessonId} />
+                )}
               </Card>
             </View>
           )}
@@ -350,7 +368,32 @@ function OxButton({ value, state, onPress }: { value: boolean; state: ChoiceStat
   );
 }
 
-function WrongItem({ question }: { question: QuizQuestion }) {
+/** 퀴즈 → 이론: 관련 레슨을 스택에 쌓아 열고, 돌아오면 풀던 퀴즈가 그대로 남아 있다 */
+function LessonLink({ lessonId }: { lessonId: string }) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={() => {
+        haptic('light');
+        router.push({ pathname: '/interview/lesson/[id]', params: { id: lessonId, from: 'quiz' } });
+      }}
+      accessibilityRole="link"
+      style={[styles.lessonLink, { backgroundColor: c.csSoft }]}>
+      <Ionicons name="book-outline" size={18} color={c.cs} />
+      <View style={{ flex: 1 }}>
+        <Text variant="small" tint={c.cs} weight="700">
+          관련 이론 보기
+        </Text>
+        <Text variant="caption" numberOfLines={1}>
+          {LESSON_MAP[lessonId].title}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={c.cs} />
+    </Pressable>
+  );
+}
+
+function WrongItem({ question, showLesson }: { question: QuizQuestion; showLesson: boolean }) {
   const c = useColors();
   const [open, setOpen] = useState(false);
   if (!question) return null;
@@ -368,6 +411,7 @@ function WrongItem({ question }: { question: QuizQuestion }) {
         <View style={{ gap: spacing.sm, paddingLeft: 26 }}>
           <Inline text={`정답: ${answerLabel}`} variant="captionStrong" color={c.success} />
           <RichText text={question.explanation} variant="caption" />
+          {showLesson && question.lessonId && LESSON_MAP[question.lessonId] && <LessonLink lessonId={question.lessonId} />}
         </View>
       )}
     </Card>
@@ -387,4 +431,5 @@ const styles = StyleSheet.create({
   feedback: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md },
   footerHint: { flex: 1, height: 54, alignItems: 'center', justifyContent: 'center' },
   resultCard: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl },
+  lessonLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md },
 });
