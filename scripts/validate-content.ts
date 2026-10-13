@@ -165,7 +165,8 @@ function checkRich(text: unknown, where: string, field: string, min = 1) {
     if (/^#{1,2}\s/.test(line)) warn(where, `${field}: '#'/'##' 제목은 지원하지 않습니다 ('###'만): ${line}`);
     if (/\[[^\]]+\]\([^)]+\)/.test(line)) warn(where, `${field}: 링크 문법은 지원하지 않습니다: ${line.slice(0, 60)}`);
     if (/^\s{2,}[-*]\s/.test(raw)) warn(where, `${field}: 중첩 목록은 지원하지 않습니다: ${line.trim().slice(0, 60)}`);
-    if (/<\/?(br|b|i|code|p|div|span)\b/i.test(line)) warn(where, `${field}: HTML 태그는 지원하지 않습니다`);
+    // 인라인 코드 안의 태그(`<button>` 등)는 코드로 보여주므로 괜찮다
+    if (/<\/?(br|b|i|code|p|div|span)\b/i.test(stripInlineCode(line))) warn(where, `${field}: HTML 태그는 지원하지 않습니다`);
     const ticks = (line.match(/`/g) ?? []).length;
     if (ticks % 2 !== 0) err(where, `${field}: 인라인 코드 백틱 짝이 맞지 않습니다: "${line.slice(0, 80)}"`);
     paragraph.push(line);
