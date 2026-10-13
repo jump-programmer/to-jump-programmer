@@ -105,6 +105,10 @@ const CODE_LANGS = new Set([
   'json',
   'yaml',
   'bash',
+  'tsx',
+  'vue',
+  'html',
+  'css',
   'text',
 ]);
 
@@ -298,6 +302,8 @@ const REVIEW_CATEGORIES = new Set([
   'readability',
   'testing',
   'api-design',
+  'state',
+  'accessibility',
 ]);
 const SEVERITIES = new Set(['critical', 'major', 'minor']);
 

@@ -2,8 +2,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { CodeLanguage, FrameworkId, SolveLanguage } from '@/content/types';
+import type {
+  BackendFrameworkId,
+  CodeLanguage,
+  DevTrack,
+  FrameworkId,
+  FrontendFrameworkId,
+  SolveLanguage,
+  TrackSide,
+} from '@/content/types';
 import { dayKey } from '@/lib/date';
+
+import { migrateProgress, PROGRESS_VERSION } from './migrate';
 
 export type CareerGoal = 'new' | 'career';
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -14,7 +24,12 @@ export interface Profile {
   nickname: string;
   goal: CareerGoal;
   language: SolveLanguage;
-  framework: FrameworkId;
+  /** 개발자 코스 (백엔드 · 프론트엔드 · 풀스택) */
+  track: DevTrack;
+  /** 백엔드 프레임워크 (백엔드 · 풀스택 코스) */
+  framework: BackendFrameworkId;
+  /** 프론트엔드 프레임워크 (프론트엔드 · 풀스택 코스) */
+  frontendFramework: FrontendFrameworkId;
   dailyGoal: number;
   onboarded: boolean;
 }
@@ -24,6 +39,8 @@ export interface Settings {
   haptics: boolean;
   /** 코드 리뷰에서 마지막으로 고른 코드 언어 (예: spring → kotlin). 없으면 풀이 언어를 따른다 */
   reviewLanguage: Partial<Record<FrameworkId, CodeLanguage>>;
+  /** 풀스택 코스의 코드 리뷰 탭에서 마지막으로 본 쪽 */
+  reviewSide?: TrackSide;
 }
 
 export interface QuizRecord {
@@ -64,8 +81,10 @@ export interface ChallengeRecord {
 export interface DailyPlanRecord {
   key: string;
   questionIds: string[];
-  /** 퀴즈를 만들 때의 하루 목표 · 관심 프레임워크 — 바뀌면 오늘의 퀴즈를 다시 만든다 */
+  /** 퀴즈를 만들 때의 하루 목표 · 코스(courseKey) — 바뀌면 오늘의 퀴즈를 다시 만든다 */
   goal?: number;
+  course?: string;
+  /** 이전 버전에서 코스 대신 저장한 관심 프레임워크 (더 이상 쓰지 않음) */
   framework?: FrameworkId;
   /** 오늘 공부할 알고리즘 유형 */
   algoPatternId?: string;
@@ -116,7 +135,9 @@ const DEFAULT_PROFILE: Profile = {
   nickname: '',
   goal: 'new',
   language: 'python',
+  track: 'backend',
   framework: 'spring',
+  frontendFramework: 'react',
   dailyGoal: 10,
   onboarded: false,
 };
@@ -235,7 +256,9 @@ export const useProgress = create<ProgressState>()(
     }),
     {
       name: 'tj-progress',
-      version: 1,
+      version: PROGRESS_VERSION,
+      // 이전 버전 기록에 새 필드의 기본값을 채운다 (기존 기록은 그대로 둔다)
+      migrate: (persisted, version) => migrateProgress(persisted, version) as ProgressState,
       storage: createJSONStorage(() => AsyncStorage),
       // 저장된 데이터가 손상되어 읽을 수 없으면 비우고 새로 시작한다
       onRehydrateStorage: () => (_state, error) => {

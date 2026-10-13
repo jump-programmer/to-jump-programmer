@@ -3,7 +3,8 @@ import type { CsCategory, CsGroupId, FrameworkId } from '../types';
 export const CS_GROUPS: { id: CsGroupId; title: string; description: string }[] = [
   { id: 'fundamentals', title: 'CS 기초', description: '운영체제 · 네트워크 · 자료구조 · DB · 보안' },
   { id: 'language', title: '언어', description: 'Java · JavaScript/TypeScript · Python' },
-  { id: 'framework', title: '프레임워크', description: 'Spring · Node.js/NestJS · Django/Flask' },
+  { id: 'framework', title: '프레임워크', description: 'Spring · NestJS · Django · React · Vue' },
+  { id: 'web', title: '웹 프론트엔드', description: '브라우저 · HTML/CSS · 성능 · 보안 · 상태 관리' },
   { id: 'architecture', title: '아키텍처 · 인프라', description: '시스템 설계 · 클라우드 · DevOps' },
   { id: 'practice', title: '개발 실무', description: '객체지향 · 디자인 패턴 · 협업 · 테스트' },
 ];
@@ -32,6 +33,7 @@ export const CS_CATEGORIES: CsCategory[] = [
   },
   {
     id: 'database',
+    track: 'backend',
     group: 'fundamentals',
     title: '데이터베이스',
     description: '인덱스, 트랜잭션·격리 수준, 정규화, 락, NoSQL',
@@ -46,6 +48,7 @@ export const CS_CATEGORIES: CsCategory[] = [
   },
   {
     id: 'java',
+    track: 'backend',
     group: 'language',
     title: 'Java · JVM',
     description: 'JVM 구조, GC, 컬렉션, 동시성, 최신 문법',
@@ -60,6 +63,7 @@ export const CS_CATEGORIES: CsCategory[] = [
   },
   {
     id: 'python',
+    track: 'backend',
     group: 'language',
     title: 'Python',
     description: 'GIL, 제너레이터, 데코레이터, 메모리 모델',
@@ -67,6 +71,8 @@ export const CS_CATEGORIES: CsCategory[] = [
   },
   {
     id: 'spring',
+    track: 'backend',
+    framework: 'spring',
     group: 'framework',
     title: 'Spring · JPA',
     description: 'IoC/DI, AOP, 트랜잭션, Spring Boot, JPA',
@@ -74,6 +80,8 @@ export const CS_CATEGORIES: CsCategory[] = [
   },
   {
     id: 'nestjs',
+    track: 'backend',
+    framework: 'nest',
     group: 'framework',
     title: 'Node.js · NestJS',
     description: 'Node 런타임, Express, NestJS 모듈·DI·파이프라인',
@@ -81,13 +89,74 @@ export const CS_CATEGORIES: CsCategory[] = [
   },
   {
     id: 'django',
+    track: 'backend',
+    framework: 'django',
     group: 'framework',
     title: 'Django · Flask',
     description: 'ORM, 미들웨어, 요청 생명주기, WSGI/ASGI',
     icon: 'flask-outline',
   },
   {
+    id: 'react',
+    group: 'framework',
+    track: 'frontend',
+    framework: 'react',
+    title: 'React',
+    description: '렌더링 · 훅 · 상태 · 메모이제이션 · 서버 컴포넌트',
+    icon: 'logo-react',
+  },
+  {
+    id: 'vue',
+    group: 'framework',
+    track: 'frontend',
+    framework: 'vue',
+    title: 'Vue',
+    description: '반응성 · Composition API · 컴포넌트 통신 · Pinia',
+    icon: 'logo-vue',
+  },
+  {
+    id: 'browser',
+    group: 'web',
+    track: 'frontend',
+    title: '브라우저 · 렌더링',
+    description: '렌더링 파이프라인, 이벤트 루프, 저장소, 동일 출처 정책',
+    icon: 'browsers-outline',
+  },
+  {
+    id: 'html-css',
+    group: 'web',
+    track: 'frontend',
+    title: 'HTML · CSS · 접근성',
+    description: '시맨틱 마크업, 박스 모델, Flex · Grid, 반응형, 웹 접근성',
+    icon: 'color-palette-outline',
+  },
+  {
+    id: 'web-performance',
+    group: 'web',
+    track: 'frontend',
+    title: '웹 성능 · 빌드',
+    description: 'Core Web Vitals, CSR · SSR, 번들러, 코드 분할, 캐싱',
+    icon: 'speedometer-outline',
+  },
+  {
+    id: 'web-security',
+    group: 'web',
+    track: 'frontend',
+    title: '프론트엔드 보안',
+    description: 'XSS, CSRF, CORS, CSP, 토큰 보관',
+    icon: 'lock-closed-outline',
+  },
+  {
+    id: 'frontend-practice',
+    group: 'web',
+    track: 'frontend',
+    title: '상태 관리 · 테스트',
+    description: '클라이언트 · 서버 상태, 컴포넌트 설계, 테스트 전략',
+    icon: 'git-compare-outline',
+  },
+  {
     id: 'architecture',
+    track: 'backend',
     group: 'architecture',
     title: '아키텍처 · 시스템 설계',
     description: 'MSA, 캐시, 메시지 큐, 확장성, 분산 시스템',
@@ -95,6 +164,7 @@ export const CS_CATEGORIES: CsCategory[] = [
   },
   {
     id: 'infra',
+    track: 'backend',
     group: 'architecture',
     title: '인프라 · DevOps',
     description: 'Docker, Kubernetes, CI/CD, 클라우드, 모니터링',
@@ -121,12 +191,14 @@ export const CS_CATEGORY_MAP: Record<string, CsCategory> = Object.fromEntries(
 );
 
 /**
- * 관심 프레임워크에서 쓰는 언어 카테고리 (group 'language').
- * 오늘의 퀴즈는 언어 카테고리 중 여기 있는 것만 내고, 운영체제 · 네트워크 같은 다른 카테고리는 모두 낸다.
+ * 프레임워크에서 쓰는 언어 카테고리 (group 'language').
+ * 오늘의 퀴즈는 언어 카테고리 중 고른 프레임워크의 언어만 낸다 (src/features/progress/course.ts).
  * Kotlin 카테고리는 아직 없어 Spring 은 Java 만 나온다 — 카테고리를 추가하면 spring 에 'kotlin' 을 넣는다.
  */
 export const FRAMEWORK_LANGUAGE_CATEGORIES: Record<FrameworkId, string[]> = {
   spring: ['java'],
   nest: ['javascript'],
   django: ['python'],
+  react: ['javascript'],
+  vue: ['javascript'],
 };

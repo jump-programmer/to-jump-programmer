@@ -8,19 +8,26 @@ import { Button } from '@/components/ui/button';
 import { IconBadge } from '@/components/ui/misc';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
-import { REVIEW_FRAMEWORKS, SOLVE_LANGUAGE_IDS, type FrameworkId, type SolveLanguage } from '@/content';
+import {
+  DEV_TRACKS,
+  REVIEW_FRAMEWORKS,
+  type BackendFrameworkId,
+  type DevTrack,
+  type FrontendFrameworkId,
+  type ReviewFramework,
+  type SolveLanguage,
+} from '@/content';
+import { solveLanguagesFor } from '@/features/progress/course';
 import { useProgress, type CareerGoal } from '@/features/progress/store';
 import { haptic } from '@/lib/haptics';
 import { LANGUAGE_LABEL } from '@/lib/highlight';
 import { useColors } from '@/theme/theme-provider';
 import { MAX_CONTENT_WIDTH, radius, spacing } from '@/theme/tokens';
 
-const STEPS = 4;
-
 const FEATURES = [
   { icon: 'code-slash', title: '알고리즘 · 코딩 테스트', desc: '이론과 자주 나오는 유형을 Python·Java·Kotlin·C++·JS 예제로 익혀요', tone: 'algo' },
-  { icon: 'git-pull-request', title: '코드 리뷰 테스트', desc: 'Spring·NestJS·Django 코드의 문제를 찾고 개선해요', tone: 'review' },
-  { icon: 'school', title: '기술 면접 CS', desc: 'OS·네트워크·DB부터 아키텍처까지 퀴즈와 질문 카드로', tone: 'cs' },
+  { icon: 'git-pull-request', title: '코드 리뷰 테스트', desc: 'Spring·NestJS·Django·React·Vue 코드의 문제를 찾고 개선해요', tone: 'review' },
+  { icon: 'school', title: '기술 면접 CS', desc: 'OS·네트워크·DB부터 브라우저·React까지 퀴즈와 질문 카드로', tone: 'cs' },
 ] as const;
 
 const LANGUAGE_ICON: Record<SolveLanguage, keyof typeof Ionicons.glyphMap> = {
@@ -36,7 +43,7 @@ const LANGUAGE_DESC: Record<SolveLanguage, string> = {
   java: '국내 백엔드 채용에서 가장 많이 쓰는 언어',
   kotlin: 'Spring Boot 를 Kotlin 으로 쓴다면',
   cpp: '빠른 실행 속도, STL 활용',
-  javascript: 'Node.js 개발자라면 익숙한 언어로',
+  javascript: '프론트엔드 · Node.js 개발자라면 익숙한 언어로',
 };
 
 function OptionCard({
@@ -89,14 +96,35 @@ export default function Onboarding() {
   const [nickname, setNickname] = useState('');
   const [goal, setGoal] = useState<CareerGoal>('new');
   const [language, setLanguage] = useState<SolveLanguage>('python');
-  const [framework, setFramework] = useState<FrameworkId>('spring');
+  const [track, setTrack] = useState<DevTrack>('backend');
+  const [framework, setFramework] = useState<BackendFrameworkId>('spring');
+  const [frontendFramework, setFrontendFramework] = useState<FrontendFrameworkId>('react');
   const [dailyGoal, setDailyGoal] = useState(10);
+
+  // 코스에 따라 프레임워크 단계가 달라진다 (풀스택은 백엔드 · 프론트엔드 둘 다)
+  const flow = [
+    'intro',
+    'profile',
+    'track',
+    'language',
+    ...(track !== 'frontend' ? ['backend'] : []),
+    ...(track !== 'backend' ? ['frontend'] : []),
+    'goal',
+  ];
+  const STEPS = flow.length - 1;
+  const current = flow[step];
+
+  const selectTrack = (next: DevTrack) => {
+    setTrack(next);
+    // 프론트엔드 개발자는 코딩 테스트도 JavaScript 로 보는 경우가 많다
+    if (next === 'frontend') setLanguage('javascript');
+  };
 
   const next = () => {
     haptic('light');
     if (step < STEPS) setStep(step + 1);
     else {
-      completeOnboarding({ nickname: nickname.trim() || '개발자', goal, language, framework, dailyGoal });
+      completeOnboarding({ nickname: nickname.trim() || '개발자', goal, language, track, framework, frontendFramework, dailyGoal });
       haptic('success');
       router.replace('/');
     }
@@ -104,7 +132,15 @@ export default function Onboarding() {
 
   // 설정 없이 바로 둘러보기 — 기본값으로 시작하고, 프로필은 나중에 [마이 › 설정]에서 바꿀 수 있다
   const skip = () => {
-    completeOnboarding({ nickname: '개발자', goal: 'new', language: 'python', framework: 'spring', dailyGoal: 10 });
+    completeOnboarding({
+      nickname: '개발자',
+      goal: 'new',
+      language: 'python',
+      track: 'backend',
+      framework: 'spring',
+      frontendFramework: 'react',
+      dailyGoal: 10,
+    });
     router.replace('/');
   };
 
@@ -131,7 +167,7 @@ export default function Onboarding() {
         )}
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
-            {step === 0 && (
+            {current === 'intro' && (
               <View style={{ gap: spacing.xxl, paddingTop: spacing.xxxl }}>
                 <View style={[styles.logo, { backgroundColor: c.primary }]}>
                   <Ionicons name="arrow-up" size={34} color="#fff" />
@@ -158,7 +194,7 @@ export default function Onboarding() {
               </View>
             )}
 
-            {step === 1 && (
+            {current === 'profile' && (
               <View style={{ gap: spacing.xl }}>
                 <Text variant="title1">어떻게 불러드릴까요?</Text>
                 <TextInput
@@ -193,7 +229,30 @@ export default function Onboarding() {
               </View>
             )}
 
-            {step === 2 && (
+            {current === 'track' && (
+              <View style={{ gap: spacing.xl }}>
+                <View style={{ gap: spacing.sm }}>
+                  <Text variant="title1">어떤 개발자를{'\n'}준비하나요?</Text>
+                  <Text variant="callout" color="textTertiary">
+                    코스에 맞는 면접 질문과 코드 리뷰를 추천해드려요. 알고리즘은 모든 코스 공통이에요.
+                  </Text>
+                </View>
+                <View style={{ gap: spacing.md }}>
+                  {DEV_TRACKS.map((t) => (
+                    <OptionCard
+                      key={t.id}
+                      selected={track === t.id}
+                      onPress={() => selectTrack(t.id)}
+                      title={t.title}
+                      description={t.description}
+                      icon={t.icon}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {current === 'language' && (
               <View style={{ gap: spacing.xl }}>
                 <View style={{ gap: spacing.sm }}>
                   <Text variant="title1">코딩 테스트 언어를{'\n'}골라주세요</Text>
@@ -202,7 +261,7 @@ export default function Onboarding() {
                   </Text>
                 </View>
                 <View style={{ gap: spacing.md }}>
-                  {SOLVE_LANGUAGE_IDS.map((l) => (
+                  {solveLanguagesFor(track).map((l) => (
                     <OptionCard
                       key={l}
                       selected={language === l}
@@ -216,34 +275,30 @@ export default function Onboarding() {
               </View>
             )}
 
-            {step === 3 && (
-              <View style={{ gap: spacing.xl }}>
-                <View style={{ gap: spacing.sm }}>
-                  <Text variant="title1">주로 쓰는 백엔드{'\n'}프레임워크는요?</Text>
-                  <Text variant="callout" color="textTertiary">코드 리뷰 문제를 이 프레임워크 위주로 추천해드려요.</Text>
-                </View>
-                <View style={{ gap: spacing.md }}>
-                  {REVIEW_FRAMEWORKS.map((f) => (
-                    <OptionCard
-                      key={f.id}
-                      selected={framework === f.id}
-                      onPress={() => setFramework(f.id)}
-                      title={f.title}
-                      description={f.subtitle}
-                      icon={f.icon}
-                      accent={f.accent}
-                    />
-                  ))}
-                </View>
-              </View>
+            {current === 'backend' && (
+              <FrameworkStep
+                title={'주로 쓰는 백엔드\n프레임워크는요?'}
+                frameworks={REVIEW_FRAMEWORKS.filter((f) => f.track === 'backend')}
+                value={framework}
+                onChange={(id) => setFramework(id as BackendFrameworkId)}
+              />
             )}
 
-            {step === 4 && (
+            {current === 'frontend' && (
+              <FrameworkStep
+                title={'주로 쓰는 프론트엔드\n프레임워크는요?'}
+                frameworks={REVIEW_FRAMEWORKS.filter((f) => f.track === 'frontend')}
+                value={frontendFramework}
+                onChange={(id) => setFrontendFramework(id as FrontendFrameworkId)}
+              />
+            )}
+
+            {current === 'goal' && (
               <View style={{ gap: spacing.xl }}>
                 <View style={{ gap: spacing.sm }}>
                   <Text variant="title1">하루 목표를{'\n'}정해볼까요?</Text>
                   <Text variant="callout" color="textTertiary">
-                    퀴즈 한 문제, 카드 한 장, 코드 제출 한 번이 각각 1개로 기록돼요.
+                    퀴즈 한 문제, 면접 카드 한 장, 유형 · 리뷰 학습 하나가 각각 1개로 기록돼요.
                   </Text>
                 </View>
                 <View style={{ gap: spacing.md }}>
@@ -265,12 +320,48 @@ export default function Onboarding() {
             title={step === 0 ? '시작하기' : step === STEPS ? '학습 시작하기' : '다음'}
             onPress={next}
             fullWidth
-            disabled={step === 1 && nickname.trim().length === 0}
+            disabled={current === 'profile' && nickname.trim().length === 0}
           />
-          {step === 0 && <Button title="설정은 나중에, 바로 둘러보기" variant="ghost" size="md" onPress={skip} fullWidth />}
+          {current === 'intro' && <Button title="설정은 나중에, 바로 둘러보기" variant="ghost" size="md" onPress={skip} fullWidth />}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function FrameworkStep({
+  title,
+  frameworks,
+  value,
+  onChange,
+}: {
+  title: string;
+  frameworks: ReviewFramework[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <View style={{ gap: spacing.xl }}>
+      <View style={{ gap: spacing.sm }}>
+        <Text variant="title1">{title}</Text>
+        <Text variant="callout" color="textTertiary">
+          코드 리뷰 문제와 면접 질문을 이 프레임워크 위주로 추천해드려요.
+        </Text>
+      </View>
+      <View style={{ gap: spacing.md }}>
+        {frameworks.map((f) => (
+          <OptionCard
+            key={f.id}
+            selected={value === f.id}
+            onPress={() => onChange(f.id)}
+            title={f.title}
+            description={f.subtitle}
+            icon={f.icon}
+            accent={f.accent}
+          />
+        ))}
+      </View>
+    </View>
   );
 }
 

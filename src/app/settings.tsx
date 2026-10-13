@@ -10,10 +10,11 @@ import { Chip, Divider, SectionHeader } from '@/components/ui/misc';
 import { Screen } from '@/components/ui/screen';
 import { SegmentedControl } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
-import { CONTENT_STATS, REVIEW_FRAMEWORKS, SOLVE_LANGUAGE_IDS } from '@/content';
+import { CONTENT_STATS, DEV_TRACKS, type BackendFrameworkId, type FrontendFrameworkId } from '@/content';
 import { openAdPrivacyOptions, useAds } from '@/features/ads';
 import { backupFileName, createBackup, describeBackup, parseBackup } from '@/features/progress/backup';
 import { BACKUP_SUPPORTED, pickBackupFile, saveBackupFile } from '@/features/progress/backup-file';
+import { reviewFrameworksFor, solveLanguagesFor } from '@/features/progress/course';
 import { useProgress, type ThemePreference } from '@/features/progress/store';
 import { confirmAsync, notify } from '@/lib/confirm';
 import { LANGUAGE_LABEL } from '@/lib/highlight';
@@ -92,20 +93,48 @@ export default function SettingsScreen() {
             ]}
           />
         </Field>
+        <Field label="개발자 코스">
+          <SegmentedControl
+            value={profile.track}
+            onChange={(track) => updateProfile({ track })}
+            options={DEV_TRACKS.map((t) => ({ value: t.id, label: t.title }))}
+          />
+        </Field>
         <Field label="코딩 테스트 기본 언어">
           <View style={styles.chips}>
-            {SOLVE_LANGUAGE_IDS.map((l) => (
+            {solveLanguagesFor(profile.track).map((l) => (
               <Chip key={l} label={LANGUAGE_LABEL[l]} selected={profile.language === l} onPress={() => updateProfile({ language: l })} />
             ))}
           </View>
         </Field>
-        <Field label="관심 프레임워크">
-          <View style={styles.chips}>
-            {REVIEW_FRAMEWORKS.map((f) => (
-              <Chip key={f.id} label={f.title} selected={profile.framework === f.id} onPress={() => updateProfile({ framework: f.id })} />
-            ))}
-          </View>
-        </Field>
+        {profile.track !== 'frontend' && (
+          <Field label="백엔드 프레임워크">
+            <View style={styles.chips}>
+              {reviewFrameworksFor('backend').map((f) => (
+                <Chip
+                  key={f.id}
+                  label={f.title}
+                  selected={profile.framework === f.id}
+                  onPress={() => updateProfile({ framework: f.id as BackendFrameworkId })}
+                />
+              ))}
+            </View>
+          </Field>
+        )}
+        {profile.track !== 'backend' && (
+          <Field label="프론트엔드 프레임워크">
+            <View style={styles.chips}>
+              {reviewFrameworksFor('frontend').map((f) => (
+                <Chip
+                  key={f.id}
+                  label={f.title}
+                  selected={profile.frontendFramework === f.id}
+                  onPress={() => updateProfile({ frontendFramework: f.id as FrontendFrameworkId })}
+                />
+              ))}
+            </View>
+          </Field>
+        )}
         <Field label="하루 목표">
           <View style={styles.chips}>
             {[5, 10, 20, 30].map((n) => (

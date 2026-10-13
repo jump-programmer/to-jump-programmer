@@ -41,6 +41,8 @@ interface LangDef {
   stringPrefixes?: boolean;
   /** `$VAR` (bash) */
   dollarVars?: boolean;
+  /** `<tag attr="…">` 마크업 (JSX · HTML · Vue 템플릿) — 태그 이름과 속성 이름을 색으로 구분 */
+  tags?: boolean;
 }
 
 const words = (s: string) => new Set(s.split(/\s+/).filter(Boolean));
@@ -153,6 +155,20 @@ const DEFS: Record<string, LangDef> = {
     annotations: true,
     capitalizedTypes: true,
   },
+  html: {
+    keywords: new Set(),
+    lineComments: [],
+    blockComments: [['<!--', '-->']],
+    quotes: ['"', "'"],
+    tags: true,
+  },
+  css: {
+    keywords: words('important media supports keyframes import from to'),
+    lineComments: [],
+    blockComments: [['/*', '*/']],
+    quotes: ['"', "'"],
+    keyColon: true,
+  },
   sql: {
     keywords: SQL_KEYWORDS,
     literals: words('true false null'),
@@ -187,7 +203,14 @@ const DEFS: Record<string, LangDef> = {
   },
 };
 
+// React 컴포넌트(TSX)는 TypeScript 에 JSX 태그를 더한 것
+DEFS.tsx = { ...DEFS.typescript, tags: true };
+
 const IDENT = /[A-Za-z_$#][\w$]*/y;
+/** `<div`, `</Button`, `<my-el` — 앞 글자가 식별자 · 닫는 괄호면 비교 연산자나 제네릭(`Array<T>`)으로 본다 */
+const TAG_OPEN = /<\/?([A-Za-z][\w.:-]*)/y;
+/** 태그 안의 속성 이름 (`className=`, `v-if=`, `:to=`, `@click=`, `#default=`, `aria-label=`) */
+const ATTR = /(?:[:@#]|v-)?[A-Za-z][\w.:-]*(?==["'{])/y;
 const NUMBER = /(0[xX][\da-fA-F_]+|0[bB][01_]+|\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?[lLfFdDuUn]*|\.\d+([eE][+-]?\d+)?)/y;
 const ANNOTATION = /@[A-Za-z_][\w.]*/y;
 const DOLLAR = /\$\{?[A-Za-z_][\w]*\}?/y;
@@ -265,6 +288,25 @@ function tokenize(src: string, def: LangDef): Token[] {
       i = j;
       continue;
     }
+    if (def.tags && ch === '<' && !/[\w$)\]]/.test(src[i - 1] ?? '')) {
+      TAG_OPEN.lastIndex = i;
+      const m = TAG_OPEN.exec(src);
+      if (m) {
+        push('plain', m[0].slice(0, m[0].length - m[1].length));
+        push(/^[A-Z]/.test(m[1]) ? 'type' : 'keyword', m[1]);
+        i += m[0].length;
+        continue;
+      }
+    }
+    if (def.tags && /[\s]/.test(src[i - 1] ?? '') && /[A-Za-z:@#]/.test(ch)) {
+      ATTR.lastIndex = i;
+      const m = ATTR.exec(src);
+      if (m) {
+        push('annotation', m[0]);
+        i += m[0].length;
+        continue;
+      }
+    }
     if (def.annotations && ch === '@') {
       ANNOTATION.lastIndex = i;
       const m = ANNOTATION.exec(src);
@@ -299,7 +341,7 @@ function tokenize(src: string, def: LangDef): Token[] {
         const word = m[0];
         const key = def.caseInsensitive ? word.toLowerCase() : word;
         let kind: TokenKind = 'plain';
-        if (def.keyColon && nextNonSpace(i + word.length) === ':' && src[i + word.length] !== ':') kind = 'type';
+        if (def.keyColon && /^[ \t]*:(?!:)/.test(src.slice(i + word.length, i + word.length + 8))) kind = 'type';
         else if (def.keywords.has(key)) kind = 'keyword';
         else if (def.literals?.has(key)) kind = 'number';
         else if (def.types?.has(word)) kind = 'type';
@@ -328,6 +370,20 @@ function splitLines(tokens: Token[]): Token[][] {
   return lines;
 }
 
+/** Vue 단일 파일 컴포넌트 — <script> 안은 TypeScript, <style> 안은 CSS, 나머지(<template>)는 HTML 로 */
+function tokenizeVue(src: string): Token[] {
+  const out: Token[] = [];
+  const BLOCK = /(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2>)/g;
+  let last = 0;
+  for (let m = BLOCK.exec(src); m; m = BLOCK.exec(src)) {
+    out.push(...tokenize(src.slice(last, m.index), DEFS.html), ...tokenize(m[1], DEFS.html));
+    out.push(...tokenize(m[3], m[2] === 'script' ? DEFS.typescript : DEFS.css), ...tokenize(m[4], DEFS.html));
+    last = m.index + m[0].length;
+  }
+  out.push(...tokenize(src.slice(last), DEFS.html));
+  return out;
+}
+
 const cache = new Map<string, Token[][]>();
 
 /** 코드를 줄 단위 토큰 배열로 변환 */
@@ -336,7 +392,12 @@ export function highlightLines(code: string, language: string): Token[][] {
   const hit = cache.get(key);
   if (hit) return hit;
   const def = DEFS[language];
-  const result = def ? splitLines(tokenize(code, def)) : code.split('\n').map((l) => (l ? [{ kind: 'plain' as const, text: l }] : []));
+  const result =
+    language === 'vue'
+      ? splitLines(tokenizeVue(code))
+      : def
+        ? splitLines(tokenize(code, def))
+        : code.split('\n').map((l) => (l ? [{ kind: 'plain' as const, text: l }] : []));
   if (cache.size > 300) cache.clear();
   cache.set(key, result);
   return result;
@@ -349,6 +410,10 @@ export const LANGUAGE_LABEL: Record<string, string> = {
   cpp: 'C++',
   javascript: 'JavaScript',
   typescript: 'TypeScript',
+  tsx: 'TypeScript (TSX)',
+  vue: 'Vue',
+  html: 'HTML',
+  css: 'CSS',
   sql: 'SQL',
   json: 'JSON',
   yaml: 'YAML',

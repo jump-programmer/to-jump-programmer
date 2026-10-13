@@ -4,15 +4,19 @@
  */
 import assert from 'node:assert/strict';
 
-import { CS_CATEGORIES, CS_CONTENT, FRAMEWORK_LANGUAGE_CATEGORIES, QUESTION_MAP, QUESTION_SOURCE } from '../src/content';
+import { CS_CATEGORIES, CS_CATEGORY_MAP, FRAMEWORK_LANGUAGE_CATEGORIES, QUESTION_MAP, QUESTION_SOURCE } from '../src/content';
 import { backupFileName, createBackup, describeBackup, parseBackup } from '../src/features/progress/backup';
 import {
-  composeDailyQuiz,
-  csQuestionIdsForFramework,
-  dailyQuizQuota,
-  isQuestionForFramework,
-  type DailyQuizInput,
-} from '../src/features/progress/daily-quiz';
+  csCategoriesForCourse,
+  csQuestionGroupsForCourse,
+  isCategoryInTrack,
+  isQuestionForCourse,
+  sideOfDay,
+  solveLanguagesFor,
+  type Course,
+} from '../src/features/progress/course';
+import { composeDailyQuiz, dailyQuizQuota, type DailyQuizInput } from '../src/features/progress/daily-quiz';
+import { migrateProgress } from '../src/features/progress/migrate';
 import type { ProgressData } from '../src/features/progress/store';
 import { computeBestStreak, computeStreak, dayKey, seededRandom } from '../src/lib/date';
 import { diffLines, diffStats } from '../src/lib/diff';
@@ -99,10 +103,33 @@ test('키워드 · 문자열 · 주석 · 여러 줄 토큰', () => {
   assert.ok(lines[3].some((t) => t.kind === 'comment'));
 });
 
+test('JSX · Vue 템플릿 · CSS 속성', () => {
+  const kinds = (code: string, lang: string) => highlightLines(code, lang).flat().filter((t) => t.kind !== 'plain');
+  const tsx = kinds('const a = useState<number>(0);\nreturn <Item key={id} className="x" />;', 'tsx');
+  assert.ok(tsx.some((t) => t.kind === 'type' && t.text === 'Item'));
+  assert.ok(tsx.some((t) => t.kind === 'annotation' && t.text === 'className'));
+  assert.ok(!tsx.some((t) => t.kind === 'keyword' && t.text === 'number')); // 제네릭은 태그가 아니다
+  const vue = kinds('<script setup lang="ts">\nconst n = ref(0);\n</script>\n<template>\n  <p v-if="ok" @click="n++">{{ n }}</p>\n</template>\n<style>\n.a { color: red; }\n</style>', 'vue');
+  assert.ok(vue.some((t) => t.kind === 'keyword' && t.text === 'const'));
+  assert.ok(vue.some((t) => t.kind === 'annotation' && t.text === 'v-if'));
+  assert.ok(vue.some((t) => t.kind === 'annotation' && t.text === '@click'));
+  assert.ok(vue.some((t) => t.kind === 'type' && t.text === 'color'));
+  assert.ok(kinds('name: app', 'yaml').some((t) => t.kind === 'type' && t.text === 'name'));
+});
+
 console.log('backup');
 test('학습 기록 백업 만들기 · 읽기', () => {
   const progress: ProgressData = {
-    profile: { nickname: '점프', goal: 'new', language: 'kotlin', framework: 'spring', dailyGoal: 10, onboarded: true },
+    profile: {
+      nickname: '점프',
+      goal: 'new',
+      language: 'kotlin',
+      track: 'fullstack',
+      framework: 'spring',
+      frontendFramework: 'vue',
+      dailyGoal: 10,
+      onboarded: true,
+    },
     settings: { theme: 'dark', haptics: true, reviewLanguage: { spring: 'kotlin' } },
     quiz: { q1: { attempts: 2, correct: 1, last: true, lastAt: 1 } },
     cards: {},
@@ -143,7 +170,7 @@ test('잘못된 백업 파일은 거절', () => {
 console.log('daily quiz');
 const ids = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}${i}`);
 const compose = (input: Partial<DailyQuizInput> & { goal: number }) =>
-  composeDailyQuiz({ wrong: [], cs: ids('c', 40), algo: ids('a', 40), seen: () => false, random: seededRandom(7), ...input });
+  composeDailyQuiz({ wrong: [], cs: [ids('c', 40)], algo: ids('a', 40), seen: () => false, random: seededRandom(7), ...input });
 test('하루 목표를 틀린 문제 : CS : 알고리즘 = 2 : 4 : 2 로 나눔', () => {
   assert.deepEqual(dailyQuizQuota(5), { wrong: 1, cs: 3, algo: 1 });
   assert.deepEqual(dailyQuizQuota(8), { wrong: 2, cs: 4, algo: 2 }); // 예전 고정 구성
@@ -168,16 +195,16 @@ test('목표 5 · 10 · 20 · 30 만큼 출제, 영역별 몫 · 틀린 문제 �
   assert.deepEqual(compose({ goal: 10, wrong, seen }), compose({ goal: 10, wrong, seen })); // 같은 날 · 같은 시드면 같은 구성
 });
 test('후보가 모자라면 다른 영역에서 채우고, 전체보다 많으면 있는 만큼만', () => {
-  const quiz = compose({ goal: 10, cs: ids('c', 2) });
+  const quiz = compose({ goal: 10, cs: [ids('c', 2)] });
   assert.equal(quiz.length, 10);
   assert.equal(quiz.filter((id) => id.startsWith('c')).length, 2);
   // 틀린 문제가 없으면 그 몫도 새 문제로
   assert.equal(compose({ goal: 20 }).length, 20);
   // 안 본 문제를 다 쓰면 이미 푼 문제로 채움
-  const seenAll = compose({ goal: 10, cs: ids('c', 3), algo: ids('a', 3), seen: (id) => id.endsWith('0') });
+  const seenAll = compose({ goal: 10, cs: [ids('c', 3)], algo: ids('a', 3), seen: (id) => id.endsWith('0') });
   assert.equal(seenAll.length, 6);
   assert.ok(seenAll.slice(-2).every((id) => id.endsWith('0')));
-  assert.equal(compose({ goal: 30, cs: ids('c', 4), algo: ids('a', 3) }).length, 7);
+  assert.equal(compose({ goal: 30, cs: [ids('c', 4)], algo: ids('a', 3) }).length, 7);
   assert.deepEqual(compose({ goal: 10, cs: [], algo: [] }), []);
 });
 test('목표를 바꿔도 오늘 이미 푼 문제는 남김', () => {
@@ -193,32 +220,97 @@ test('목표를 바꿔도 오늘 이미 푼 문제는 남김', () => {
   // 목표를 줄이면 앞에서부터 목표 수만큼
   assert.deepEqual(compose({ goal: 5, keep: ids('c', 8) }), ids('c', 5));
 });
-test('언어 CS 문제는 관심 프레임워크의 언어만, 다른 카테고리는 그대로', () => {
+test('풀스택은 CS 후보 묶음을 번갈아 골라 한쪽으로 쏠리지 않음', () => {
+  for (const seed of [1, 2, 3, 4]) {
+    const quiz = composeDailyQuiz({
+      goal: 20,
+      wrong: ids('w', 5),
+      cs: [ids('b', 30), ids('f', 30), ids('x', 30)],
+      algo: ids('a', 30),
+      seen: (id) => id.startsWith('w'),
+      random: seededRandom(seed),
+    });
+    const count = (p: string) => quiz.filter((id) => id.startsWith(p)).length;
+    assert.equal(count('b') + count('f') + count('x'), 10);
+    assert.ok(Math.max(count('b'), count('f'), count('x')) - Math.min(count('b'), count('f'), count('x')) <= 1);
+  }
+  // 한 묶음이 모자라면 다른 묶음에서 채운다 (CS 몫 5 + 틀린 문제가 없어 남는 2)
+  const short = composeDailyQuiz({ goal: 10, wrong: [], cs: [ids('b', 1), ids('f', 30)], algo: ids('a', 30), seen: () => false, random: seededRandom(1) });
+  assert.equal(short.filter((id) => id.startsWith('b')).length, 1);
+  assert.equal(short.filter((id) => id.startsWith('f')).length, 6);
+});
+
+console.log('course');
+const course = (track: Course['track'], framework: Course['framework'] = 'spring', frontendFramework: Course['frontendFramework'] = 'react'): Course => ({
+  track,
+  framework,
+  frontendFramework,
+});
+const catIds = (c: Course) => csCategoriesForCourse(c).map((cat) => cat.id);
+test('언어 · 프레임워크 매핑은 실제 카테고리만, 모든 언어 카테고리는 어느 프레임워크에선가 출제', () => {
   const languageIds = CS_CATEGORIES.filter((c) => c.group === 'language').map((c) => c.id);
-  // 매핑에는 실제 언어 카테고리만, 모든 언어 카테고리는 어느 프레임워크에선가 출제
   for (const list of Object.values(FRAMEWORK_LANGUAGE_CATEGORIES)) assert.ok(list.every((id) => languageIds.includes(id)));
   assert.deepEqual([...new Set(Object.values(FRAMEWORK_LANGUAGE_CATEGORIES).flat())].sort(), [...languageIds].sort());
-  assert.deepEqual(FRAMEWORK_LANGUAGE_CATEGORIES.django, ['python']);
-  assert.deepEqual(FRAMEWORK_LANGUAGE_CATEGORIES.nest, ['javascript']);
-  assert.ok(FRAMEWORK_LANGUAGE_CATEGORIES.spring.includes('java'));
-
-  const otherIds = CS_CATEGORIES.filter((c) => c.group !== 'language').flatMap((c) => CS_CONTENT[c.id]?.quiz.map((q) => q.id) ?? []);
-  assert.ok(otherIds.length > 0);
-  for (const fw of ['spring', 'nest', 'django'] as const) {
-    const cs = csQuestionIdsForFramework(fw);
-    const allowed = FRAMEWORK_LANGUAGE_CATEGORIES[fw];
-    const categories = new Set(cs.map((id) => QUESTION_MAP[id].categoryId));
-    assert.ok(otherIds.every((id) => cs.includes(id)), `${fw}: 비언어 카테고리 문제가 빠짐`);
-    for (const lang of languageIds) {
-      const hasQuiz = (CS_CONTENT[lang]?.quiz.length ?? 0) > 0;
-      assert.equal(categories.has(lang), allowed.includes(lang) && hasQuiz, `${fw} · ${lang}`);
-    }
-    assert.ok(cs.every((id) => isQuestionForFramework(id, fw)));
-    const java = CS_CONTENT.java.quiz[0]?.id;
-    if (java) assert.equal(isQuestionForFramework(java, fw), fw === 'spring');
+  // 프레임워크 카테고리는 프레임워크와 연결되고, 그 프레임워크와 같은 코스
+  for (const cat of CS_CATEGORIES.filter((c) => c.group === 'framework')) {
+    assert.ok(cat.framework, `${cat.id}: framework 없음`);
   }
-  assert.equal(isQuestionForFramework(Object.keys(QUESTION_MAP).find((id) => QUESTION_SOURCE[id] === 'algo')!, 'django'), true);
-  assert.equal(isQuestionForFramework('없는-문제', 'spring'), false);
+  assert.equal(CS_CATEGORY_MAP.react.track, 'frontend');
+  assert.equal(CS_CATEGORY_MAP.spring.track, 'backend');
+});
+test('백엔드 코스: 고른 프레임워크 · 언어만, 프론트엔드 카테고리 제외', () => {
+  const ids = catIds(course('backend', 'django'));
+  assert.ok(ids.includes('python') && !ids.includes('java') && !ids.includes('javascript'));
+  assert.ok(ids.includes('django') && !ids.includes('spring') && !ids.includes('react'));
+  assert.ok(ids.includes('database') && ids.includes('os') && !ids.includes('browser'));
+});
+test('프론트엔드 코스: 프론트엔드 · 공통 카테고리, 백엔드 전용 제외', () => {
+  const ids = catIds(course('frontend', 'spring', 'vue'));
+  assert.ok(ids.includes('javascript') && ids.includes('vue') && ids.includes('browser') && ids.includes('network'));
+  assert.ok(!ids.includes('java') && !ids.includes('spring') && !ids.includes('react') && !ids.includes('database'));
+  assert.equal(isCategoryInTrack(CS_CATEGORY_MAP.infra, 'frontend'), false);
+  assert.equal(isCategoryInTrack(CS_CATEGORY_MAP.security, 'frontend'), true);
+});
+test('풀스택 코스: 두 쪽에서 고른 프레임워크 하나씩, CS 후보는 백엔드 · 프론트엔드 · 공통 묶음', () => {
+  const c = course('fullstack', 'spring', 'vue');
+  const ids = catIds(c);
+  assert.ok(ids.includes('java') && ids.includes('javascript') && ids.includes('spring') && ids.includes('vue'));
+  assert.ok(!ids.includes('react') && !ids.includes('nestjs') && !ids.includes('python'));
+  assert.ok(ids.includes('database') && ids.includes('browser'));
+  const groups = csQuestionGroupsForCourse(c);
+  assert.ok(groups.length >= 1 && groups.length <= 3);
+  assert.equal(csQuestionGroupsForCourse(course('backend')).length, 1);
+  const all = groups.flat();
+  assert.ok(all.every((id) => isQuestionForCourse(id, c)));
+  // 다른 코스의 문제와 알고리즘 문제
+  const javaQ = Object.keys(QUESTION_MAP).find((id) => QUESTION_MAP[id].categoryId === 'java');
+  if (javaQ) assert.equal(isQuestionForCourse(javaQ, course('frontend')), false);
+  const algoQ = Object.keys(QUESTION_MAP).find((id) => QUESTION_SOURCE[id] === 'algo')!;
+  assert.equal(isQuestionForCourse(algoQ, course('frontend')), true);
+  assert.equal(isQuestionForCourse('없는-문제', c), false);
+});
+test('풀스택의 오늘의 추천은 날마다 백엔드 · 프론트엔드를 번갈아', () => {
+  const d1 = new Date(2026, 9, 13);
+  const d2 = new Date(2026, 9, 14);
+  assert.notEqual(sideOfDay('fullstack', d1), sideOfDay('fullstack', d2));
+  assert.notEqual(sideOfDay('fullstack', d1), sideOfDay('fullstack', d1, 1)); // 리뷰와 면접 질문은 엇갈리게
+  assert.equal(sideOfDay('frontend', d1), 'frontend');
+  assert.equal(sideOfDay('backend', d2, 1), 'backend');
+});
+test('코스별 코딩 테스트 언어 순서', () => {
+  assert.equal(solveLanguagesFor('frontend')[0], 'javascript');
+  assert.equal(solveLanguagesFor('frontend').length, 5);
+  assert.equal(solveLanguagesFor('backend')[0], 'python');
+});
+test('이전 버전 학습 기록은 백엔드 코스로 옮김', () => {
+  const old = { profile: { nickname: '점프', framework: 'django', language: 'java' }, quiz: { q1: { attempts: 1 } } };
+  const migrated = migrateProgress(old, 1);
+  assert.equal(migrated.profile?.track, 'backend');
+  assert.equal(migrated.profile?.frontendFramework, 'react');
+  assert.equal(migrated.profile?.framework, 'django');
+  assert.deepEqual(migrated.quiz, old.quiz);
+  const current = { profile: { track: 'frontend', frontendFramework: 'vue' } };
+  assert.deepEqual(migrateProgress(current, 2), current);
 });
 
 console.log('date');

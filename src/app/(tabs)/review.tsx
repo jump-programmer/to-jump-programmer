@@ -17,11 +17,16 @@ import {
   resolvePattern,
   REVIEW_CATEGORY_LABEL,
   REVIEW_CONTENT,
-  REVIEW_FRAMEWORKS,
+  TRACK_SIDE_LABEL,
+  trackSides,
+  type BackendFrameworkId,
   type FrameworkId,
+  type FrontendFrameworkId,
   type ReviewCategory,
+  type TrackSide,
 } from '@/content';
 import { AdSlot } from '@/features/ads';
+import { reviewFrameworksFor, sideFramework } from '@/features/progress/course';
 import { useReviewLanguage } from '@/features/progress/review-language';
 import { useProgress } from '@/features/progress/store';
 import { haptic } from '@/lib/haptics';
@@ -32,8 +37,15 @@ type Tab = 'patterns' | 'challenges';
 
 export default function ReviewTab() {
   const c = useColors();
-  const framework = useProgress((s) => s.profile.framework);
+  const profile = useProgress((s) => s.profile);
+  const savedSide = useProgress((s) => s.settings.reviewSide);
   const updateProfile = useProgress((s) => s.updateProfile);
+  const updateSettings = useProgress((s) => s.updateSettings);
+  // 풀스택은 백엔드 · 프론트엔드 중 마지막으로 본 쪽, 나머지 코스는 그 코스 쪽
+  const sides = trackSides(profile.track);
+  const side: TrackSide = savedSide && sides.includes(savedSide) ? savedSide : sides[0];
+  const framework = sideFramework(profile, side);
+  const frameworks = reviewFrameworksFor(side);
   const readPatterns = useProgress((s) => s.patterns);
   const challenges = useProgress((s) => s.challenges);
   const [tab, setTab] = useState<Tab>('patterns');
@@ -50,7 +62,11 @@ export default function ReviewTab() {
     if (id === framework) return;
     haptic('selection');
     setCategory(null);
-    updateProfile({ framework: id });
+    updateProfile(side === 'backend' ? { framework: id as BackendFrameworkId } : { frontendFramework: id as FrontendFrameworkId });
+  };
+  const selectSide = (next: TrackSide) => {
+    setCategory(null);
+    updateSettings({ reviewSide: next });
   };
 
   return (
@@ -62,8 +78,16 @@ export default function ReviewTab() {
         </Text>
       </View>
 
+      {sides.length > 1 && (
+        <SegmentedControl
+          value={side}
+          onChange={selectSide}
+          options={sides.map((sd) => ({ value: sd, label: TRACK_SIDE_LABEL[sd] }))}
+        />
+      )}
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-        {REVIEW_FRAMEWORKS.map((f) => {
+        {frameworks.map((f) => {
           const active = f.id === framework;
           const total = REVIEW_CONTENT[f.id].patterns.length + REVIEW_CONTENT[f.id].challenges.length;
           return (

@@ -10,7 +10,8 @@ import { Divider, IconBadge, ListRow, SectionHeader } from '@/components/ui/misc
 import { ProgressBar } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
-import { REVIEW_FRAMEWORK_MAP } from '@/content';
+import { DEV_TRACK_LABEL, REVIEW_FRAMEWORK_MAP } from '@/content';
+import { courseFrameworks } from '@/features/progress/course';
 import { againCardIds, trackSummary, wrongQuestionIds } from '@/features/progress/selectors';
 import { useProgress } from '@/features/progress/store';
 import { computeBestStreak, computeStreak } from '@/lib/date';
@@ -45,7 +46,10 @@ export default function MeTab() {
           <View style={styles.badges}>
             <Badge label={profile.goal === 'new' ? '신입 취업 준비' : '경력 이직 준비'} tone="primary" />
             <Badge label={LANGUAGE_LABEL[profile.language]} />
-            <Badge label={REVIEW_FRAMEWORK_MAP[profile.framework].title} />
+            <Badge label={DEV_TRACK_LABEL[profile.track]} tone="primary" />
+            {courseFrameworks(profile).map((f) => (
+              <Badge key={f} label={REVIEW_FRAMEWORK_MAP[f].title} />
+            ))}
           </View>
         </View>
         <Ionicons name="settings-outline" size={24} color={c.textSecondary} onPress={() => router.push('/settings')} accessibilityLabel="설정" />

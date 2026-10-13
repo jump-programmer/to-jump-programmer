@@ -72,7 +72,7 @@ export default function Home() {
     : review.kind === 'pattern'
       ? PATTERN_MAP[review.id] && resolvePattern(PATTERN_MAP[review.id], reviewLanguage(PATTERN_MAP[review.id].framework))
       : CHALLENGE_MAP[review.id] && resolveChallenge(CHALLENGE_MAP[review.id], reviewLanguage(CHALLENGE_MAP[review.id].framework));
-  const fw = REVIEW_FRAMEWORK_MAP[state.profile.framework];
+  const fw = reviewItem ? REVIEW_FRAMEWORK_MAP[reviewItem.framework] : undefined;
   const goalDone = today >= goal;
 
   return (
@@ -177,7 +177,7 @@ export default function Home() {
             <IconBadge name="git-pull-request" color={c.review} background={c.reviewSoft} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text variant="small" tint={c.review} weight="700">
-                오늘의 코드 리뷰 · {fw.title}
+                오늘의 코드 리뷰 · {fw?.title}
               </Text>
               <Text variant="bodyStrong" numberOfLines={1}>
                 {reviewItem.title}
