@@ -17,6 +17,7 @@ import { BACKUP_SUPPORTED, pickBackupFile, saveBackupFile } from '@/features/pro
 import { reviewFrameworksFor, solveLanguagesFor } from '@/features/progress/course';
 import { useProgress, type ThemePreference } from '@/features/progress/store';
 import { confirmAsync, notify } from '@/lib/confirm';
+import { GITHUB_URL, openExternal } from '@/lib/links';
 import { LANGUAGE_LABEL } from '@/lib/highlight';
 import { useColors } from '@/theme/theme-provider';
 import { radius, spacing } from '@/theme/tokens';
@@ -208,6 +209,10 @@ export default function SettingsScreen() {
             </Pressable>
           </>
         )}
+        <Divider />
+        <Pressable onPress={() => openExternal(GITHUB_URL)} accessibilityRole="link" accessibilityLabel="GitHub 저장소 열기">
+          <InfoRow label="GitHub" value="lgm1007/to-jump-programmer ›" />
+        </Pressable>
         <Divider />
         <InfoRow label="오픈소스" value="Expo · React Native" />
       </Card>
