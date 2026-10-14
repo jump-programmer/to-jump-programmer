@@ -158,6 +158,8 @@ async function writeServiceWorker() {
     // 어떤 경로로 들어와도(오프라인 포함) 앱 셸을 내려 준다 — 화면 이동은 Expo Router 가 처리
     navigateFallback: `${PREFIX}index.html`,
     navigateFallbackAllowlist: [new RegExp(`^${BASE_PATTERN}/`)],
+    // 사이트 루트의 정적 파일(sitemap · robots · ads · 검색엔진 소유권 확인)은 앱 셸 대신 서버 응답을 그대로 보여 준다
+    navigateFallbackDenylist: [new RegExp(`^${BASE_PATTERN}/(sitemap\\.xml|robots\\.txt|ads\\.txt|app-ads\\.txt|google[^/]+\\.html)$`)],
     // 새 버전을 배포하면 다음 실행부터 바로 쓰도록 한다 (학습 기록은 캐시가 아니라 브라우저 저장소에 있어 지워지지 않는다)
     skipWaiting: true,
     clientsClaim: true,
