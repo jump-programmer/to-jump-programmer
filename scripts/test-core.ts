@@ -320,6 +320,11 @@ test('Spring 코스는 Java · Kotlin 언어 문제를 함께 출제', () => {
   const quiz = composeDailyQuiz({ goal: 10, wrong: [], cs: groups, algo: [], seen: (id) => id !== javaQ && id !== kotlinQ, random: seededRandom(3) });
   assert.ok(quiz.includes(javaQ) && quiz.includes(kotlinQ));
 });
+test('AI Agent 카테고리는 모든 코스에서 출제', () => {
+  for (const c of [course('backend', 'django'), course('frontend', 'spring', 'vue'), course('fullstack')]) {
+    assert.ok(catIds(c).includes('ai-agent'));
+  }
+});
 test('풀스택의 오늘의 추천은 날마다 백엔드 · 프론트엔드를 번갈아', () => {
   const d1 = new Date(2026, 9, 13);
   const d2 = new Date(2026, 9, 14);

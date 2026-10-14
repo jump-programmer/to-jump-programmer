@@ -100,7 +100,7 @@ export interface InterviewCard {
 /* CS (기술 면접)                                                        */
 /* ------------------------------------------------------------------ */
 
-export type CsGroupId = 'fundamentals' | 'language' | 'framework' | 'web' | 'architecture' | 'practice';
+export type CsGroupId = 'fundamentals' | 'language' | 'framework' | 'web' | 'architecture' | 'practice' | 'ai';
 
 export interface CsCategory {
   id: string;

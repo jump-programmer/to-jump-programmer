@@ -7,6 +7,7 @@ export const CS_GROUPS: { id: CsGroupId; title: string; description: string }[] 
   { id: 'web', title: '웹 프론트엔드', description: '브라우저 · HTML/CSS · 성능 · 보안 · 상태 관리' },
   { id: 'architecture', title: '아키텍처 · 인프라', description: '시스템 설계 · 클라우드 · DevOps' },
   { id: 'practice', title: '개발 실무', description: '객체지향 · 디자인 패턴 · 협업 · 테스트' },
+  { id: 'ai', title: 'AI · Agent', description: 'LLM 기본 · 에이전트 · 안전한 활용' },
 ];
 
 export const CS_CATEGORIES: CsCategory[] = [
@@ -191,6 +192,13 @@ export const CS_CATEGORIES: CsCategory[] = [
     title: '개발 실무',
     description: 'Git, 테스트, 코드 리뷰, 장애 대응, 협업',
     icon: 'briefcase-outline',
+  },
+  {
+    id: 'ai-agent',
+    group: 'ai',
+    title: 'AI Agent 활용',
+    description: 'LLM 기본, 에이전트 루프 · 도구 호출 · RAG, 검증 · 보안',
+    icon: 'sparkles-outline',
   },
 ];
 
