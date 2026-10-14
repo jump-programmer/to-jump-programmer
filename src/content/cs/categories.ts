@@ -2,7 +2,7 @@ import type { CsCategory, CsGroupId, FrameworkId } from '../types';
 
 export const CS_GROUPS: { id: CsGroupId; title: string; description: string }[] = [
   { id: 'fundamentals', title: 'CS 기초', description: '운영체제 · 네트워크 · 자료구조 · DB · 보안' },
-  { id: 'language', title: '언어', description: 'Java · JavaScript/TypeScript · Python' },
+  { id: 'language', title: '언어', description: 'Java · Kotlin · JavaScript/TypeScript · Python' },
   { id: 'framework', title: '프레임워크', description: 'Spring · NestJS · Django · React · Vue' },
   { id: 'web', title: '웹 프론트엔드', description: '브라우저 · HTML/CSS · 성능 · 보안 · 상태 관리' },
   { id: 'architecture', title: '아키텍처 · 인프라', description: '시스템 설계 · 클라우드 · DevOps' },
@@ -53,6 +53,14 @@ export const CS_CATEGORIES: CsCategory[] = [
     title: 'Java · JVM',
     description: 'JVM 구조, GC, 컬렉션, 동시성, 최신 문법',
     icon: 'cafe-outline',
+  },
+  {
+    id: 'kotlin',
+    track: 'backend',
+    group: 'language',
+    title: 'Kotlin',
+    description: '널 안전성, 데이터 · sealed 클래스, 확장 함수, 코루틴, Java 상호운용',
+    icon: 'prism-outline',
   },
   {
     id: 'javascript',
@@ -193,10 +201,10 @@ export const CS_CATEGORY_MAP: Record<string, CsCategory> = Object.fromEntries(
 /**
  * 프레임워크에서 쓰는 언어 카테고리 (group 'language').
  * 오늘의 퀴즈는 언어 카테고리 중 고른 프레임워크의 언어만 낸다 (src/features/progress/course.ts).
- * Kotlin 카테고리는 아직 없어 Spring 은 Java 만 나온다 — 카테고리를 추가하면 spring 에 'kotlin' 을 넣는다.
+ * Spring 은 Java 와 Kotlin 을 함께 쓰므로 두 언어 카테고리를 모두 낸다.
  */
 export const FRAMEWORK_LANGUAGE_CATEGORIES: Record<FrameworkId, string[]> = {
-  spring: ['java'],
+  spring: ['java', 'kotlin'],
   nest: ['javascript'],
   django: ['python'],
   react: ['javascript'],

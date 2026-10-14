@@ -30,6 +30,7 @@ import htmlCss from './data/cs/html-css';
 import csDjango from './data/cs/django';
 import infra from './data/cs/infra';
 import java from './data/cs/java';
+import kotlin from './data/cs/kotlin';
 import javascript from './data/cs/javascript';
 import nestjs from './data/cs/nestjs';
 import network from './data/cs/network';
@@ -105,6 +106,7 @@ export const CS_CONTENT: Record<string, CsCategoryContent> = {
   database,
   security,
   java,
+  kotlin,
   javascript,
   python,
   spring: csSpring,
