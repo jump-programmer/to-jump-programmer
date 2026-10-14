@@ -30,8 +30,8 @@
 
 ■ 기술 면접 CS
 · 카테고리별 이론 레슨을 읽고 핵심 확인 퀴즈 3문제로 점검, 틀리면 바로 이론으로
-· 운영체제, 네트워크, 데이터베이스, 보안, 아키텍처, 인프라, 객체지향, 개발 실무
-· Java·Spring, JavaScript·NestJS, Python·Django 언어·프레임워크별 질문
+· 운영체제, 네트워크, 데이터베이스, 보안, 아키텍처, 인프라, 객체지향, 개발 실무, AI Agent 활용
+· Java·Kotlin·Spring, JavaScript·NestJS, Python·Django 언어·프레임워크별 질문
 · 브라우저 렌더링, HTML·CSS·접근성, 웹 성능, 프론트엔드 보안, React · Vue
 · 면접 질문 카드: 모범 답변, 핵심 키워드 자가 체크, 예상 꼬리 질문
 

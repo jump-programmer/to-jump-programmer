@@ -21,6 +21,7 @@ import tree from './data/algorithm/quiz/tree';
 import twoPointer from './data/algorithm/quiz/two-pointer';
 import unionFind from './data/algorithm/quiz/union-find';
 import { CS_CATEGORIES } from './cs/categories';
+import aiAgent from './data/cs/ai-agent';
 import architecture from './data/cs/architecture';
 import browser from './data/cs/browser';
 import database from './data/cs/database';
@@ -30,6 +31,7 @@ import htmlCss from './data/cs/html-css';
 import csDjango from './data/cs/django';
 import infra from './data/cs/infra';
 import java from './data/cs/java';
+import kotlin from './data/cs/kotlin';
 import javascript from './data/cs/javascript';
 import nestjs from './data/cs/nestjs';
 import network from './data/cs/network';
@@ -105,6 +107,7 @@ export const CS_CONTENT: Record<string, CsCategoryContent> = {
   database,
   security,
   java,
+  kotlin,
   javascript,
   python,
   spring: csSpring,
@@ -121,6 +124,7 @@ export const CS_CONTENT: Record<string, CsCategoryContent> = {
   infra,
   oop,
   practice,
+  'ai-agent': aiAgent,
 };
 
 export const REVIEW_CONTENT: Record<FrameworkId, ReviewFrameworkContent> = {

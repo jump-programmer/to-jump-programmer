@@ -306,6 +306,25 @@ test('풀스택 코스: 두 쪽에서 고른 프레임워크 하나씩, CS 후�
   assert.equal(isQuestionForCourse(algoQ, course('frontend')), true);
   assert.equal(isQuestionForCourse('없는-문제', c), false);
 });
+test('Spring 코스는 Java · Kotlin 언어 문제를 함께 출제', () => {
+  const spring = course('backend', 'spring');
+  assert.ok(catIds(spring).includes('java') && catIds(spring).includes('kotlin'));
+  assert.ok(catIds(course('fullstack', 'spring', 'vue')).includes('kotlin'));
+  assert.ok(!catIds(course('backend', 'nest')).includes('kotlin') && !catIds(course('frontend')).includes('kotlin'));
+  const groups = csQuestionGroupsForCourse(spring);
+  const firstOf = (cat: string) => groups.flat().find((id) => QUESTION_MAP[id].categoryId === cat);
+  const javaQ = firstOf('java');
+  const kotlinQ = firstOf('kotlin');
+  assert.ok(javaQ && kotlinQ);
+  // 안 푼 CS 문제가 Java · Kotlin 하나씩뿐이면 오늘의 퀴즈에 둘 다 나온다
+  const quiz = composeDailyQuiz({ goal: 10, wrong: [], cs: groups, algo: [], seen: (id) => id !== javaQ && id !== kotlinQ, random: seededRandom(3) });
+  assert.ok(quiz.includes(javaQ) && quiz.includes(kotlinQ));
+});
+test('AI Agent 카테고리는 모든 코스에서 출제', () => {
+  for (const c of [course('backend', 'django'), course('frontend', 'spring', 'vue'), course('fullstack')]) {
+    assert.ok(catIds(c).includes('ai-agent'));
+  }
+});
 test('풀스택의 오늘의 추천은 날마다 백엔드 · 프론트엔드를 번갈아', () => {
   const d1 = new Date(2026, 9, 13);
   const d2 = new Date(2026, 9, 14);
