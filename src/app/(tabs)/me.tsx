@@ -16,6 +16,7 @@ import { againCardIds, trackSummary, wrongQuestionIds } from '@/features/progres
 import { useProgress } from '@/features/progress/store';
 import { computeBestStreak, computeStreak } from '@/lib/date';
 import { LANGUAGE_LABEL } from '@/lib/highlight';
+import { GITHUB_URL, openExternal } from '@/lib/links';
 import { useColors } from '@/theme/theme-provider';
 import { radius, spacing } from '@/theme/tokens';
 
@@ -52,7 +53,17 @@ export default function MeTab() {
             ))}
           </View>
         </View>
-        <Ionicons name="settings-outline" size={24} color={c.textSecondary} onPress={() => router.push('/settings')} accessibilityLabel="설정" />
+        <View style={styles.headerActions}>
+          <Ionicons
+            name="logo-github"
+            size={24}
+            color={c.textSecondary}
+            onPress={() => openExternal(GITHUB_URL)}
+            accessibilityRole="link"
+            accessibilityLabel="GitHub 저장소 열기"
+          />
+          <Ionicons name="settings-outline" size={24} color={c.textSecondary} onPress={() => router.push('/settings')} accessibilityLabel="설정" />
+        </View>
       </View>
 
       <View style={styles.stats}>
@@ -180,6 +191,7 @@ function TrackRow({ title, color, value, right }: { title: string; color: string
 
 const styles = StyleSheet.create({
   profile: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.sm },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   avatar: { width: 56, height: 56, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   badges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   stats: { flexDirection: 'row', gap: spacing.md },
