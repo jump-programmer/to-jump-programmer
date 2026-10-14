@@ -77,6 +77,7 @@ npm run preview:web
 ## 5. 검색 노출 (Google Search Console)
 
 - **도메인 속성** `jumpprogrammer.app` 으로 등록하고, 안내되는 TXT 레코드(`google-site-verification=…`)를 Cloudflare › DNS › Records 에 추가해 확인합니다.
+- **URL 접두어 속성** `https://jumpprogrammer.app/` 으로 등록할 때는 HTML 파일 방법을 쓸 수 있습니다. 내려받은 `google….html` 을 `public/` 에 두면 빌드가 도메인 루트로 복사합니다(이미 `public/google6f2d767f4614ac15.html` 이 있음 — 확인된 상태를 유지하려면 지우지 않습니다).
 - **Sitemaps** 에 `https://jumpprogrammer.app/sitemap.xml` 을 제출합니다. (토픽 · 알고리즘 유형 · 개선 패턴 · 리뷰 퀴즈 · 면접 카테고리 화면, `robots.txt` 에도 들어 있음)
 
 ## 6. 알아 둘 점
