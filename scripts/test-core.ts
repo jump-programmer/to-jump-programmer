@@ -8,6 +8,7 @@ import {
   ALL_LESSONS,
   CS_CATEGORIES,
   CS_CATEGORY_MAP,
+  CS_CONTENT,
   FRAMEWORK_LANGUAGE_CATEGORIES,
   LESSON_QUESTION_IDS,
   QUESTION_MAP,
@@ -15,10 +16,13 @@ import {
 } from '../src/content';
 import { backupFileName, createBackup, describeBackup, parseBackup } from '../src/features/progress/backup';
 import {
+  courseCodeLanguages,
+  courseKey,
   csCategoriesForCourse,
   csQuestionGroupsForCourse,
   isCategoryInTrack,
   isQuestionForCourse,
+  partitionCategoriesForCourse,
   sideOfDay,
   solveLanguagesFor,
   type Course,
@@ -33,7 +37,8 @@ import {
   type LessonRecord,
 } from '../src/features/progress/lessons';
 import { migrateProgress } from '../src/features/progress/migrate';
-import type { ProgressData } from '../src/features/progress/store';
+import { dailyQuestionIds, quizUpToDate, trackSummary, type DailyPlan } from '../src/features/progress/selectors';
+import { useProgress, type ProgressData, type ProgressState } from '../src/features/progress/store';
 import { computeBestStreak, computeStreak, dayKey, seededRandom } from '../src/lib/date';
 import { diffLines, diffStats } from '../src/lib/diff';
 import { highlightLines } from '../src/lib/highlight';
@@ -302,7 +307,7 @@ test('풀스택 코스: 두 쪽에서 고른 프레임워크 하나씩, CS 후�
   // 다른 코스의 문제와 알고리즘 문제
   const javaQ = Object.keys(QUESTION_MAP).find((id) => QUESTION_MAP[id].categoryId === 'java');
   if (javaQ) assert.equal(isQuestionForCourse(javaQ, course('frontend')), false);
-  const algoQ = Object.keys(QUESTION_MAP).find((id) => QUESTION_SOURCE[id] === 'algo')!;
+  const algoQ = Object.keys(QUESTION_MAP).find((id) => QUESTION_SOURCE[id] === 'algo' && !QUESTION_MAP[id].code)!;
   assert.equal(isQuestionForCourse(algoQ, course('frontend')), true);
   assert.equal(isQuestionForCourse('없는-문제', c), false);
 });
@@ -323,6 +328,120 @@ test('Spring 코스는 Java · Kotlin 언어 문제를 함께 출제', () => {
 test('AI Agent 카테고리는 모든 코스에서 출제', () => {
   for (const c of [course('backend', 'django'), course('frontend', 'spring', 'vue'), course('fullstack')]) {
     assert.ok(catIds(c).includes('ai-agent'));
+  }
+});
+console.log('course scope (#23)');
+const ALGO_IDS = Object.keys(QUESTION_MAP).filter((id) => QUESTION_SOURCE[id] === 'algo');
+const algoWithCode = (lang: string) => ALGO_IDS.find((id) => QUESTION_MAP[id].code?.language === lang);
+const sorted = (set: Set<string>) => [...set].sort();
+test('알고리즘 코드 문제는 내 언어(코딩 테스트 언어 + 고른 프레임워크의 언어)로 쓴 것만 오늘의 퀴즈 범위', () => {
+  assert.deepEqual(sorted(courseCodeLanguages(course('backend', 'spring'))), ['java', 'kotlin']);
+  assert.deepEqual(sorted(courseCodeLanguages({ ...course('frontend'), language: 'python' })), ['javascript', 'python', 'typescript']);
+  assert.deepEqual(sorted(courseCodeLanguages(course('fullstack', 'django', 'vue'))), ['javascript', 'python', 'typescript']);
+  const noCode = ALGO_IDS.find((id) => !QUESTION_MAP[id].code)!;
+  for (const c of [course('backend', 'spring'), course('frontend'), course('fullstack', 'django')]) assert.ok(isQuestionForCourse(noCode, c));
+  const py = algoWithCode('python');
+  if (py) {
+    assert.equal(isQuestionForCourse(py, course('backend', 'spring')), false);
+    assert.equal(isQuestionForCourse(py, { ...course('backend', 'spring'), language: 'python' }), true);
+    assert.equal(isQuestionForCourse(py, course('backend', 'django')), true);
+  }
+  const java = algoWithCode('java');
+  if (java) {
+    assert.equal(isQuestionForCourse(java, course('backend', 'spring')), true);
+    assert.equal(isQuestionForCourse(java, { ...course('frontend'), language: 'kotlin' }), false);
+  }
+});
+
+const BACKENDS = ['spring', 'nest', 'django'] as const;
+const FRONTENDS = ['react', 'vue'] as const;
+const LANGUAGES = ['python', 'java', 'kotlin', 'cpp', 'javascript'] as const;
+/** 이슈 #6 · #23 의 기대 동작을 그대로 적은 표 (구현의 매핑과 따로 둔다) */
+const EXPECTED_LANGS: Record<string, string[]> = { spring: ['java', 'kotlin'], nest: ['javascript'], django: ['python'], react: ['javascript'], vue: ['javascript'] };
+const allCourses = (): Course[] =>
+  (['backend', 'frontend', 'fullstack'] as const).flatMap((track) =>
+    BACKENDS.flatMap((framework) => FRONTENDS.flatMap((frontendFramework) => LANGUAGES.map((language) => ({ track, framework, frontendFramework, language })))),
+  );
+const chosenFrameworks = (c: Course) =>
+  c.track === 'backend' ? [c.framework] : c.track === 'frontend' ? [c.frontendFramework] : [c.framework, c.frontendFramework];
+/** 기대 동작 기준으로 오늘의 퀴즈에 나와도 되는 문제인지 — 안 되면 이유를 돌려준다 */
+function outOfScope(id: string, c: Course): string | null {
+  const q = QUESTION_MAP[id];
+  const fws: string[] = chosenFrameworks(c);
+  const langs = new Set(fws.flatMap((f) => EXPECTED_LANGS[f]));
+  if (QUESTION_SOURCE[id] === 'cs') {
+    const cat = CS_CATEGORY_MAP[q.categoryId];
+    if (cat.group === 'language' && !langs.has(cat.id)) return `고르지 않은 언어 ${cat.id}`;
+    if (cat.framework && !fws.includes(cat.framework)) return `고르지 않은 프레임워크 ${cat.id}`;
+    if (cat.track && c.track !== 'fullstack' && cat.track !== c.track) return `다른 코스 ${cat.id}`;
+    return null;
+  }
+  const lang = q.code?.language;
+  if (!lang || !['python', 'java', 'kotlin', 'cpp', 'javascript', 'typescript'].includes(lang)) return null;
+  if (c.language) langs.add(c.language);
+  const ok = langs.has(lang) || (lang === 'typescript' && langs.has('javascript'));
+  return ok ? null : `다른 언어 코드 ${lang}`;
+}
+const base = useProgress.getState();
+const stateFor = (c: Course, quiz: ProgressState['quiz'] = {}): ProgressState => ({
+  ...base,
+  quiz,
+  profile: { ...base.profile, ...c, nickname: '점프', dailyGoal: 30 },
+});
+test('오늘의 퀴즈: 코스 × 프레임워크 × 코딩 테스트 언어마다 범위 밖 언어 · 기술 문제 없음 (틀린 문제 몫 포함)', () => {
+  // 모든 문제를 한 번씩 틀린 기록 — 예전에 다른 언어 · 프레임워크를 고르고 틀린 문제도 오늘의 퀴즈에는 나오지 않아야 한다
+  const allWrong = Object.fromEntries(Object.keys(QUESTION_MAP).map((id, i) => [id, { attempts: 1, correct: 0, last: false, lastAt: i }]));
+  for (const c of allCourses()) {
+    for (const quiz of [{}, allWrong]) {
+      for (const day of [1, 2]) {
+        const ids = dailyQuestionIds(stateFor(c, quiz), new Date(2026, 9, day));
+        assert.ok(ids.length > 0);
+        for (const id of ids) {
+          const why = outOfScope(id, c);
+          assert.equal(why, null, `${c.track}/${c.framework}/${c.frontendFramework}/${c.language}: ${id} (${why})`);
+        }
+      }
+    }
+  }
+});
+test('면접 CS 탭 · 랜덤 10문제 후보는 오늘의 퀴즈와 같은 범위, 나머지는 접힌 목록으로', () => {
+  for (const c of allCourses().filter((x) => x.language === 'python')) {
+    const { mine, others } = partitionCategoriesForCourse(c);
+    assert.deepEqual(mine.map((cat) => cat.id), catIds(c));
+    assert.equal(mine.length + others.length, CS_CATEGORIES.length);
+    assert.ok(others.every((cat) => !mine.includes(cat)));
+    for (const cat of mine) for (const q of CS_CONTENT[cat.id]?.quiz ?? []) assert.equal(outOfScope(q.id, c), null, q.id);
+  }
+  // 신고된 사례: Spring 을 골랐는데 Python · Django · NestJS 가 내 코스로 보이던 문제
+  const spring = partitionCategoriesForCourse(course('backend', 'spring')).others.map((cat) => cat.id);
+  for (const id of ['python', 'django', 'nestjs', 'javascript', 'react']) assert.ok(spring.includes(id), id);
+});
+test('저장된 오늘의 플랜에 범위 밖 문제가 있으면 다시 만든다', () => {
+  const c: Course = { ...course('backend', 'spring'), language: 'java' };
+  const state = stateFor(c);
+  const plan: DailyPlan = { key: '2026-10-14', goal: 30, course: courseKey(c), questionIds: dailyQuestionIds(state, new Date(2026, 9, 14)) };
+  assert.equal(quizUpToDate(plan, state.profile), true);
+  const django = CS_CONTENT.django?.quiz[0]?.id;
+  if (django) assert.equal(quizUpToDate({ ...plan, questionIds: [...plan.questionIds, django] }, state.profile), false);
+  const py = algoWithCode('python');
+  if (py) {
+    const withPy = { ...plan, questionIds: [...plan.questionIds, py] };
+    assert.equal(quizUpToDate(withPy, state.profile), false);
+    // 코딩 테스트 언어를 Python 으로 바꾸면 그 문제는 범위 안
+    assert.equal(quizUpToDate(withPy, { ...state.profile, language: 'python' }), true);
+  }
+  assert.equal(quizUpToDate({ ...plan, questionIds: [...plan.questionIds, '없는-문제'] }, state.profile), false);
+  assert.equal(quizUpToDate(plan, { ...state.profile, framework: 'django' }), false);
+  assert.equal(quizUpToDate(plan, { ...state.profile, dailyGoal: 10 }), false);
+});
+test('학습 진행 요약의 CS 집계는 오늘의 퀴즈와 같은 범위', () => {
+  for (const c of [course('backend', 'spring'), course('frontend', 'spring', 'vue'), course('fullstack', 'nest', 'react')]) {
+    const summary = trackSummary(stateFor(c));
+    const cats = catIds(c);
+    const count = (key: 'quiz' | 'cards' | 'lessons') => cats.reduce((n, id) => n + (CS_CONTENT[id]?.[key]?.length ?? 0), 0);
+    assert.equal(summary.cs.quiz.total, count('quiz'));
+    assert.equal(summary.cs.cards, count('cards'));
+    assert.equal(summary.cs.lessons, count('lessons'));
   }
 });
 test('풀스택의 오늘의 추천은 날마다 백엔드 · 프론트엔드를 번갈아', () => {

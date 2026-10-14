@@ -14,7 +14,7 @@
 | 코드 리뷰의 다른 언어 버전 (Spring Boot Kotlin) | `review/spring-kotlin.ts` = `spring-kotlin-patterns.ts` + `spring-kotlin-challenges.ts` |
 
 CS 카테고리를 새로 만들면 앱의 `src/content/cs/categories.ts` 에 등록하고, `src/content/index.ts` 의 `CS_CONTENT` 에도 추가합니다.
-- 코스(`track`): 백엔드 전용이면 `'backend'`, 프론트엔드 전용이면 `'frontend'`, 두 코스 공통이면 비워 둡니다. 코스에 맞지 않는 카테고리는 면접 CS 탭 아래쪽(다른 코스)에 접혀 있고 오늘의 학습에 나오지 않습니다.
+- 코스(`track`): 백엔드 전용이면 `'backend'`, 프론트엔드 전용이면 `'frontend'`, 두 코스 공통이면 비워 둡니다. 코스에 맞지 않는 카테고리는 면접 CS 탭 아래쪽(다른 카테고리)에 접혀 있고 오늘의 학습에 나오지 않습니다.
 - 언어 카테고리(`group: 'language'`, 예: Kotlin)라면 같은 파일의 `FRAMEWORK_LANGUAGE_CATEGORIES` 에서 그 언어를 쓰는 프레임워크에 넣어야 오늘의 퀴즈에 나옵니다. 빠뜨리면 `npm test` 가 실패합니다.
 - 프레임워크 카테고리(`group: 'framework'`)는 `framework` 에 프레임워크 id 를 적습니다. 그 프레임워크를 고른 사용자에게만 오늘의 퀴즈로 나옵니다.
 - 그룹(`group`)은 `CS_GROUPS` 의 id 입니다(CS 기초 · 언어 · 프레임워크 · 웹 프론트엔드 · 아키텍처 · 개발 실무 · AI). 면접 CS 탭은 이 순서로 묶어 보여 줍니다. 새 그룹은 `CS_GROUPS` 와 `types.ts` 의 `CsGroupId` 에 함께 추가합니다.
@@ -83,6 +83,7 @@ nums.sort()
 - `ox`: `answer: true`는 O(맞는 설명), `false`는 X.
 - `explanation`에는 정답 이유와 **오답이 왜 틀렸는지**를 함께 적습니다. 2~6문장 + 필요하면 목록/코드.
 - 난이도: 1(신입 기본기) · 2(실무/중급) · 3(심화/경력).
+- 알고리즘 개념 퀴즈의 `code.language` 는 오늘의 퀴즈 출제 범위를 정합니다. Python · Java · Kotlin · C++ · JavaScript/TypeScript 코드가 있는 문제는 그 언어를 고른 사용자(코딩 테스트 언어 또는 프레임워크의 언어)에게만 오늘의 퀴즈로 나가고, 코드가 없거나 `text` 같은 언어 중립 코드면 모두에게 나갑니다. 언어와 상관없는 알고리즘 개념은 가능하면 코드 없이(또는 의사 코드 `text` 로) 씁니다.
 
 ### 3-1. CS 이론 레슨 (CsLesson)
 

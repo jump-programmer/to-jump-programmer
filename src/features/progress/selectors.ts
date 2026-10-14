@@ -18,11 +18,11 @@ import { dayKey, hashString, seededRandom } from '@/lib/date';
 
 import {
   cardCategoriesForCourse,
-  courseCategoryIds,
   courseKey,
+  csCategoriesForCourse,
   csQuestionGroupsForCourse,
-  isCategoryInTrack,
   isQuestionForCourse,
+  questionScope,
   sideFramework,
   sideOfDay,
 } from './course';
@@ -88,13 +88,13 @@ export interface TrackSummary {
   cs: { quiz: QuizSetStats; cardsReviewed: number; cards: number; lessonsDone: number; lessons: number };
 }
 
-/** 학습 트랙 요약 — 코드 리뷰 · CS 는 코스(백엔드 · 프론트엔드 · 풀스택) 범위만 센다 */
+/** 학습 트랙 요약 — 코드 리뷰는 코스(백엔드 · 프론트엔드 · 풀스택) 범위, CS 는 오늘의 퀴즈와 같은 범위(고른 언어 · 프레임워크)만 센다 */
 export function trackSummary(state: ProgressState): TrackSummary {
   const sides = trackSides(state.profile.track);
   const reviews = REVIEW_FRAMEWORKS.filter((f) => sides.includes(f.track)).map((f) => REVIEW_CONTENT[f.id]);
   const patternIds = reviews.flatMap((r) => r.patterns.map((p) => p.id));
   const challengeIds = reviews.flatMap((r) => r.challenges.map((ch) => ch.id));
-  const cats = CS_CATEGORIES.filter((cat) => isCategoryInTrack(cat, state.profile.track));
+  const cats = csCategoriesForCourse(state.profile);
   const cardIds = cats.flatMap((cat) => csCategoryCardIds(cat.id));
   const lessonIds = cats.flatMap((cat) => (CS_CONTENT[cat.id]?.lessons ?? []).map((l) => l.id));
   return {
@@ -143,15 +143,15 @@ export type DailyPlan = DailyPlanRecord;
 const answeredOn = (quiz: Record<string, QuizRecord>, id: string, key: string) =>
   !!quiz[id] && dayKey(new Date(quiz[id].lastAt)) === key;
 
-/** 오늘의 퀴즈 — 하루 목표만큼, 코스에 맞는 문제만. keep 은 그대로 남길 문제 (오늘 이미 푼 문제) */
+/** 오늘의 퀴즈 — 하루 목표만큼, 코스 · 언어에 맞는 문제만(`isQuestionForCourse`). keep 은 그대로 남길 문제 (오늘 이미 푼 문제) */
 export function dailyQuestionIds(state: ProgressState, date: Date = new Date(), keep: string[] = []): string[] {
-  const categoryIds = courseCategoryIds(state.profile);
-  const inScope = (id: string) => isQuestionForCourse(id, state.profile, categoryIds);
+  const scope = questionScope(state.profile);
+  const inScope = (id: string) => isQuestionForCourse(id, state.profile, scope);
   return composeDailyQuiz({
     goal: state.profile.dailyGoal,
     wrong: wrongQuestionIds(state.quiz, inScope),
     cs: csQuestionGroupsForCourse(state.profile),
-    algo: ALL_ALGO_QUESTION_IDS,
+    algo: ALL_ALGO_QUESTION_IDS.filter(inScope),
     seen: (id) => !!state.quiz[id],
     random: seededRandom(hashString(`${dayKey(date)}:${state.profile.nickname}:quiz`)),
     keep: keep.filter(inScope),
@@ -212,14 +212,14 @@ function todayPlan(daily: DailyPlan | null, key: string): DailyPlan | null {
 const missingParts = (plan: DailyPlan) =>
   (!plan.algoPatternId && ALL_ALGO_PATTERNS.length > 0) || (!plan.lessonId && ALL_LESSONS.length > 0);
 
-/** 퀴즈가 지금의 하루 목표 · 코스로 만든 것인지 */
-function quizUpToDate(plan: DailyPlan, profile: ProgressState['profile']): boolean {
-  return (
-    plan.goal === profile.dailyGoal &&
-    plan.course === courseKey(profile) &&
-    plan.questionIds.length > 0 &&
-    plan.questionIds.every((id) => QUESTION_MAP[id])
-  );
+/**
+ * 퀴즈가 지금의 하루 목표 · 코스로 만든 것인지.
+ * 문제마다 지금의 범위도 확인한다 — 범위 규칙이나 콘텐츠가 바뀌어 범위 밖 문제가 남은 플랜(코딩 테스트 언어를 바꾼 경우 포함)은 다시 만든다.
+ */
+export function quizUpToDate(plan: DailyPlan, profile: ProgressState['profile']): boolean {
+  if (plan.goal !== profile.dailyGoal || plan.course !== courseKey(profile) || plan.questionIds.length === 0) return false;
+  const scope = questionScope(profile);
+  return plan.questionIds.every((id) => isQuestionForCourse(id, profile, scope));
 }
 
 /**
