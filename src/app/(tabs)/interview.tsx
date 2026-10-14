@@ -10,9 +10,9 @@ import { Screen } from '@/components/ui/screen';
 import { SegmentedControl } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { ALL_LESSONS, CS_CATEGORIES, CS_CATEGORY_MAP, CS_GROUPS, DEV_TRACK_LABEL, type CsCategory } from '@/content';
+import { ALL_LESSONS, CS_CATEGORY_MAP, CS_GROUPS, DEV_TRACK_LABEL, type CsCategory } from '@/content';
 import { AdSlot } from '@/features/ads';
-import { isCategoryInTrack } from '@/features/progress/course';
+import { partitionCategoriesForCourse } from '@/features/progress/course';
 import { categoryLessons, lessonStatus } from '@/features/progress/lessons';
 import { againCardIds, csCategoryCardIds, csCategoryQuestionIds, quizSetStats } from '@/features/progress/selectors';
 import { useProgress } from '@/features/progress/store';
@@ -22,7 +22,8 @@ import { spacing } from '@/theme/tokens';
 export default function InterviewTab() {
   const c = useColors();
   const cards = useProgress((s) => s.cards);
-  const track = useProgress((s) => s.profile.track);
+  const profile = useProgress((s) => s.profile);
+  const track = profile.track;
   const againCount = againCardIds({ cards }).length;
   const [showOthers, setShowOthers] = useState(false);
   const [mode, setMode] = useState<Mode>('lessons');
@@ -31,9 +32,8 @@ export default function InterviewTab() {
   const reading = ALL_LESSONS.filter((l) => lessonStatus(lessonRecords[l.id]) === 'reading').sort(
     (a, b) => lessonRecords[b.id].lastAt - lessonRecords[a.id].lastAt,
   )[0];
-  // 내 코스(공통 + 코스 쪽) 카테고리를 먼저, 다른 코스 카테고리는 아래에 접어 둔다
-  const mine = CS_CATEGORIES.filter((cat) => isCategoryInTrack(cat, track));
-  const others = CS_CATEGORIES.filter((cat) => !isCategoryInTrack(cat, track));
+  // 내 코스 · 고른 언어 · 프레임워크 카테고리를 먼저, 나머지는 아래에 접어 둔다 (오늘의 퀴즈와 같은 범위)
+  const { mine, others } = partitionCategoriesForCourse(profile);
 
   return (
     <Screen edges={['top']}>
@@ -78,7 +78,7 @@ export default function InterviewTab() {
               랜덤 10문제
             </Text>
             <Text variant="small" color="textTertiary">
-              {track === 'fullstack' ? '전 범위 섞어서' : `${DEV_TRACK_LABEL[track]} 범위에서`}
+              {`${DEV_TRACK_LABEL[track]} 범위에서`}
             </Text>
           </Card>
           <Card
@@ -100,13 +100,20 @@ export default function InterviewTab() {
 
       {others.length > 0 && (
         <Button
-          title={showOthers ? '다른 코스 카테고리 접기' : `다른 코스 카테고리 ${others.length}개 보기`}
+          title={showOthers ? '다른 카테고리 접기' : `다른 카테고리 ${others.length}개 보기`}
           icon={showOthers ? 'chevron-up' : 'chevron-down'}
           variant="secondary"
           onPress={() => setShowOthers(!showOthers)}
         />
       )}
-      {showOthers && <CategoryGroups categories={others} mode={mode} />}
+      {showOthers && (
+        <>
+          <Text variant="caption" color="textTertiary">
+            고르지 않은 언어 · 프레임워크와 다른 코스의 카테고리예요. 오늘의 학습에는 나오지 않지만 직접 공부할 수 있어요.
+          </Text>
+          <CategoryGroups categories={others} mode={mode} />
+        </>
+      )}
       <AdSlot />
     </Screen>
   );

@@ -12,6 +12,7 @@ import {
   SOLVE_LANGUAGE_IDS,
   trackSides,
   type BackendFrameworkId,
+  type CodeLanguage,
   type CsCategory,
   type DevTrack,
   type FrameworkId,
@@ -26,6 +27,8 @@ export interface Course {
   track: DevTrack;
   framework: BackendFrameworkId;
   frontendFramework: FrontendFrameworkId;
+  /** 코딩 테스트 언어 — 알고리즘 퀴즈 코드를 오늘의 퀴즈에 낼지 정할 때 쓴다 */
+  language?: SolveLanguage;
 }
 
 /** 코스 설정이 바뀌었는지 비교하는 키 (오늘의 플랜을 다시 만들지 판단) */
@@ -44,7 +47,7 @@ export function reviewFrameworksFor(side: TrackSide): ReviewFramework[] {
   return REVIEW_FRAMEWORKS.filter((f) => f.track === side);
 }
 
-/** 코스에서 먼저 보여줄 CS 카테고리인지 — 공통이거나 코스 쪽 카테고리 (나머지는 면접 CS 탭 아래쪽 '다른 코스') */
+/** 코스 쪽 CS 카테고리인지 — 공통이거나 코스 쪽 카테고리. 언어 · 프레임워크 선택은 보지 않으므로 출제 범위는 `csCategoriesForCourse` 를 쓴다 */
 export function isCategoryInTrack(cat: CsCategory, track: DevTrack): boolean {
   return !cat.track || trackSides(track).includes(cat.track);
 }
@@ -64,6 +67,18 @@ export function csCategoriesForCourse(c: Course): CsCategory[] {
 }
 
 /**
+ * 면접 CS 탭의 카테고리 — 오늘의 퀴즈와 같은 범위(`csCategoriesForCourse`)를 먼저 보여주고,
+ * 고르지 않은 언어 · 프레임워크와 다른 코스 카테고리는 아래에 접어 둔다(직접 찾아볼 수는 있게).
+ */
+export function partitionCategoriesForCourse(c: Course): { mine: CsCategory[]; others: CsCategory[] } {
+  const ids = courseCategoryIds(c);
+  return {
+    mine: CS_CATEGORIES.filter((cat) => ids.has(cat.id)),
+    others: CS_CATEGORIES.filter((cat) => !ids.has(cat.id)),
+  };
+}
+
+/**
  * 오늘의 퀴즈 CS 후보를 묶음으로 나눈다. 풀스택은 백엔드 · 프론트엔드 · 공통 묶음을 번갈아 골라
  * 한쪽으로 쏠리지 않게 하고, 나머지 코스는 묶음 하나다.
  */
@@ -78,15 +93,42 @@ export function csQuestionGroupsForCourse(c: Course): string[][] {
   ].filter((g) => g.length > 0);
 }
 
-/** 코스 범위의 문제인지 (알고리즘 문제는 모든 코스 공통) */
-export function isQuestionForCourse(id: string, c: Course, categoryIds = courseCategoryIds(c)): boolean {
-  const q = QUESTION_MAP[id];
-  if (!q) return false;
-  if (QUESTION_SOURCE[id] !== 'cs') return true;
-  return categoryIds.has(q.categoryId);
+export const courseCategoryIds = (c: Course) => new Set(csCategoriesForCourse(c).map((cat) => cat.id));
+
+/** 같은 계열로 보는 코드 언어 (JavaScript 를 고르면 TypeScript 코드도 낸다) */
+const CODE_FAMILY: Partial<Record<CodeLanguage, CodeLanguage[]>> = { javascript: ['javascript', 'typescript'] };
+/** 언어를 가리는 코드 — text · sql · bash · json 같은 코드는 언어와 무관하게 누구에게나 낸다 */
+const PROGRAMMING_LANGUAGES = new Set<CodeLanguage>(['python', 'java', 'kotlin', 'cpp', 'javascript', 'typescript']);
+
+/** 내 언어 — 코딩 테스트 언어와 고른 프레임워크의 언어 (Spring → Java · Kotlin, NestJS · React · Vue → JS/TS, Django → Python) */
+export function courseCodeLanguages(c: Course): Set<CodeLanguage> {
+  const langs: CodeLanguage[] = courseFrameworks(c).flatMap((f) => FRAMEWORK_LANGUAGE_CATEGORIES[f] as CodeLanguage[]);
+  if (c.language) langs.push(c.language);
+  return new Set(langs.flatMap((l) => CODE_FAMILY[l] ?? [l]));
 }
 
-export const courseCategoryIds = (c: Course) => new Set(csCategoriesForCourse(c).map((cat) => cat.id));
+/** 오늘의 퀴즈에 낼 문제의 범위 (문제마다 다시 계산하지 않도록 미리 만들어 둔다) */
+export interface QuestionScope {
+  categoryIds: Set<string>;
+  codeLanguages: Set<CodeLanguage>;
+}
+
+export const questionScope = (c: Course): QuestionScope => ({
+  categoryIds: courseCategoryIds(c),
+  codeLanguages: courseCodeLanguages(c),
+});
+
+/**
+ * 오늘의 퀴즈에 낼 문제인지.
+ * CS 는 코스 카테고리(`csCategoriesForCourse`)의 문제만, 알고리즘은 코드가 없거나 내 언어로 쓴 문제만 낸다.
+ * 다른 언어로 쓴 알고리즘 문제는 알고리즘 탭의 토픽 퀴즈에서 직접 풀 수 있다.
+ */
+export function isQuestionForCourse(id: string, c: Course, scope: QuestionScope = questionScope(c)): boolean {
+  const q = QUESTION_MAP[id];
+  if (!q) return false;
+  if (QUESTION_SOURCE[id] === 'cs') return scope.categoryIds.has(q.categoryId);
+  return !q.code || !PROGRAMMING_LANGUAGES.has(q.code.language) || scope.codeLanguages.has(q.code.language);
+}
 
 /** 오늘의 면접 질문 후보 카테고리. 풀스택은 그날 볼 쪽(side)과 공통 카테고리만 */
 export function cardCategoriesForCourse(c: Course, side?: TrackSide): CsCategory[] {
